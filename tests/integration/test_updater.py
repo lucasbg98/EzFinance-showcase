@@ -81,7 +81,7 @@ def _updater(
         served.base_url,
         install_dir=install,
         cache_dir=tmp_path / f"cache-{current}",
-        trusted_root=root if root is not None else served.root_json,
+        root_metadata=root if root is not None else served.root_json,
         current_version=current,
     )
 

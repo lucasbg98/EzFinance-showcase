@@ -42,9 +42,9 @@ def _check_crypto_and_database() -> None:
 def _check_update_client() -> None:
     import tufup.client  # noqa: F401 - só verifica que o import funciona no executável
 
-    from appfin.infrastructure.updater import trusted_root_metadata
+    from appfin.infrastructure.updater import bundled_root_metadata
 
-    if not trusted_root_metadata():
+    if not bundled_root_metadata():
         raise RuntimeError("root.json confiável ausente do pacote")
 
 

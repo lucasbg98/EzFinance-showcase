@@ -35,7 +35,7 @@ EXE_NAME: Final = "AppFinanceiro.exe"
 # hospedagem ser escolhida. Mesmo apontando para um servidor hostil, nada sem assinatura é aceito.
 DEFAULT_UPDATE_URL: Final = ""
 UPDATE_URL_ENV: Final = "APPFIN_UPDATE_URL"
-_TRUSTED_ROOT_RESOURCE: Final = "tuf_root.json"
+_ROOT_METADATA_RESOURCE: Final = "tuf_root.json"
 # Arquivos do desinstalador do Inno Setup não podem ser apagados pela atualização.
 _KEEP_ON_PURGE: Final = ["unins000.exe", "unins000.dat"]
 _INSTALL_SCRIPT: Final = (
@@ -64,9 +64,9 @@ class PreparedUpdate:
     install_dir: Path
 
 
-def trusted_root_metadata() -> bytes | None:
+def bundled_root_metadata() -> bytes | None:
     """``root.json`` confiável embutido no app (público). ``None`` se ainda não foi gerado."""
-    resource = resources.files("appfin.resources").joinpath(_TRUSTED_ROOT_RESOURCE)
+    resource = resources.files("appfin.resources").joinpath(_ROOT_METADATA_RESOURCE)
     return resource.read_bytes() if resource.is_file() else None
 
 
@@ -76,7 +76,7 @@ class Updater:
         base_url: str,
         install_dir: Path,
         cache_dir: Path,
-        trusted_root: bytes,
+        root_metadata: bytes,
         current_version: str = __version__,
     ) -> None:
         if not base_url.startswith("https://") and not _is_local_test_url(base_url):
@@ -93,7 +93,7 @@ class Updater:
         root_file = self._metadata_dir / "root.json"
         if not root_file.exists():
             # Só na primeira vez; depois o TUF atualiza o root com segurança (cadeia assinada).
-            root_file.write_bytes(trusted_root)
+            root_file.write_bytes(root_metadata)
         self._client: Any = None
         self._available: AvailableUpdate | None = None
 
@@ -103,10 +103,10 @@ class Updater:
         if not getattr(sys, "frozen", False):
             return None
         base_url = os.environ.get(UPDATE_URL_ENV) or DEFAULT_UPDATE_URL
-        trusted_root = trusted_root_metadata()
-        if not base_url or trusted_root is None:
+        root_metadata = bundled_root_metadata()
+        if not base_url or root_metadata is None:
             return None
-        return cls(base_url, Path(sys.executable).parent, cache_dir, trusted_root)
+        return cls(base_url, Path(sys.executable).parent, cache_dir, root_metadata)
 
     # ------------------------------------------------------------------ etapa 1
     def check(self) -> AvailableUpdate | None:

@@ -30,7 +30,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 DIST = ROOT / "dist"
 BUNDLE = DIST / "AppFinanceiro"
-TRUSTED_ROOT = ROOT / "src" / "appfin" / "resources" / "tuf_root.json"
+ROOT_METADATA_FILE = ROOT / "src" / "appfin" / "resources" / "tuf_root.json"
 APP_NAME = "AppFinanceiro"
 EXPIRATION_DAYS = {"root": 365, "targets": 90, "snapshot": 90, "timestamp": 30}
 ISCC_CANDIDATES = [
@@ -85,16 +85,16 @@ def cmd_keys(args: argparse.Namespace) -> None:
         sys.exit("Já existem chaves em APPFIN_RELEASE_HOME. Recriar invalidaria o app instalado.")
     repo = _repository(args.encrypted)
     repo.initialize()
-    TRUSTED_ROOT.write_bytes((repo.metadata_dir / "root.json").read_bytes())
+    ROOT_METADATA_FILE.write_bytes((repo.metadata_dir / "root.json").read_bytes())
     print(f"Chaves e repositório em: {release_home()}")
-    print(f"root.json confiável copiado para: {TRUSTED_ROOT.relative_to(ROOT)}")
+    print(f"root.json confiável copiado para: {ROOT_METADATA_FILE.relative_to(ROOT)}")
     if not args.encrypted:
         print("ATENÇÃO: chaves de TESTE (sem senha). Não use em produção.")
 
 
 def cmd_build(args: argparse.Namespace) -> None:
     version = app_version()
-    if not TRUSTED_ROOT.exists():
+    if not ROOT_METADATA_FILE.exists():
         sys.exit("Falta o root.json confiável. Rode primeiro: release.py keys")
     if BUNDLE.exists():
         shutil.rmtree(BUNDLE)
