@@ -148,7 +148,65 @@ def _repolish(widget: QWidget) -> None:
     widget.style().polish(widget)
 
 
-class FormDialog(QDialog):
+class FormBuilder:
+    """Montagem de formulários no padrão do app: seções, linhas de campos (rótulo acima), faixas
+    de aviso e destaque do campo com erro. Usado pelos modais e por páginas de formulário.
+    """
+
+    body: QVBoxLayout
+    _fields: dict[str, QWidget]
+
+    def add_banner(self, text: str) -> QFrame:
+        banner = QFrame()
+        banner.setObjectName("infoBanner")
+        banner_layout = QHBoxLayout(banner)
+        banner_layout.setContentsMargins(12, 9, 12, 9)
+        banner_layout.addWidget(plain_label(text, "bannerText"))
+        self.body.addWidget(banner)
+        return banner
+
+    def add_section(self, title: str) -> QLabel:
+        label = plain_label(title, "sectionTitle")
+        self.body.addWidget(label)
+        return label
+
+    def add_row(self, *fields: Field) -> QWidget:
+        row = QWidget()
+        layout = QHBoxLayout(row)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(14)
+        for item in fields:
+            column = QVBoxLayout()
+            column.setSpacing(4)
+            caption = plain_label(item.label + (" *" if item.required else ""), "fieldLabel")
+            caption.setBuddy(item.widget)
+            column.addWidget(caption)
+            column.addWidget(item.widget)
+            layout.addLayout(column, item.stretch)
+            if item.name:
+                self._fields[item.name] = item.widget
+        self.body.addWidget(row)
+        return row
+
+    def add_widget(self, widget: QWidget) -> None:
+        self.body.addWidget(widget)
+
+    def mark_invalid(self, field_name: str) -> None:
+        widget = self._fields.get(field_name)
+        if widget is None:
+            return
+        widget.setProperty("invalid", True)
+        _repolish(widget)
+        widget.setFocus()
+
+    def clear_invalid(self) -> None:
+        for widget in self._fields.values():
+            if widget.property("invalid"):
+                widget.setProperty("invalid", False)
+                _repolish(widget)
+
+
+class FormDialog(FormBuilder, QDialog):
     """Modal de cadastro padrão do app.
 
     Estrutura: cabeçalho (título + subtítulo) · corpo com seções e linhas de campos (rótulo acima)
@@ -214,42 +272,6 @@ class FormDialog(QDialog):
         self.result_value: Any = None
         self._save_handler: Callable[[], Any] | None = None
 
-    # ------------------------------------------------------------------ montagem
-    def add_banner(self, text: str) -> QFrame:
-        banner = QFrame()
-        banner.setObjectName("infoBanner")
-        banner_layout = QHBoxLayout(banner)
-        banner_layout.setContentsMargins(12, 9, 12, 9)
-        banner_layout.addWidget(plain_label(text, "bannerText"))
-        self.body.addWidget(banner)
-        return banner
-
-    def add_section(self, title: str) -> QLabel:
-        label = plain_label(title, "sectionTitle")
-        self.body.addWidget(label)
-        return label
-
-    def add_row(self, *fields: Field) -> QWidget:
-        row = QWidget()
-        layout = QHBoxLayout(row)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(12)
-        for item in fields:
-            column = QVBoxLayout()
-            column.setSpacing(4)
-            caption = plain_label(item.label + (" *" if item.required else ""), "fieldLabel")
-            caption.setBuddy(item.widget)
-            column.addWidget(caption)
-            column.addWidget(item.widget)
-            layout.addLayout(column, item.stretch)
-            if item.name:
-                self._fields[item.name] = item.widget
-        self.body.addWidget(row)
-        return row
-
-    def add_widget(self, widget: QWidget) -> None:
-        self.body.addWidget(widget)
-
     # ------------------------------------------------------------------ salvar
     def on_save(self, save: Callable[[], Any]) -> None:
         self._save_handler = save
@@ -257,27 +279,13 @@ class FormDialog(QDialog):
     def _on_save(self) -> None:
         if self._save_handler is None:
             raise RuntimeError("FormDialog sem ação de salvar (on_save).")
-        self._clear_invalid()
+        self.clear_invalid()
         self.error.setText("")
         try:
             self.result_value = self._save_handler()
         except (DomainError, ValueError) as error:
             self.error.setText(friendly_message(error, "form.save"))
             if isinstance(error, ValidationError):
-                self._mark_invalid(error.field)
+                self.mark_invalid(error.field)
             return
         self.accept()
-
-    def _mark_invalid(self, field_name: str) -> None:
-        widget = self._fields.get(field_name)
-        if widget is None:
-            return
-        widget.setProperty("invalid", True)
-        _repolish(widget)
-        widget.setFocus()
-
-    def _clear_invalid(self) -> None:
-        for widget in self._fields.values():
-            if widget.property("invalid"):
-                widget.setProperty("invalid", False)
-                _repolish(widget)

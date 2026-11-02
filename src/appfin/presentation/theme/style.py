@@ -99,15 +99,18 @@ def build_stylesheet() -> str:
         selection-background-color: {t["selection"]}; selection-color: {t["text"]};
     }}
     QHeaderView::section {{
-        background: {t["background"]}; padding: 6px; border: none;
-        border-bottom: 1px solid {t["border"]}; font-weight: 600;
+        background: {t["background"]}; padding: 8px 12px; border: none;
+        border-bottom: 1px solid {t["border"]}; font-weight: 600; color: {t["text_muted"]};
     }}
+    QTableView::item {{ padding: 0 12px; border-bottom: 1px solid #E8ECEC; }}
+    QTableView::item:selected {{ background: {t["selection"]}; color: {t["text"]}; }}
+    QTreeWidget::item {{ padding: 4px 4px; }}
     QCheckBox::indicator {{
         width: 15px; height: 15px; border: 1px solid {t["text_muted"]};
         border-radius: 3px; background: {t["surface"]};
     }}
     QCheckBox::indicator:checked {{ background: {t["primary"]}; border-color: {t["primary"]}; }}
-    QCheckBox:focus {{ color: {t["primary"]}; }}
+    QCheckBox::indicator:focus {{ border: 2px solid {t["primary"]}; }}
     QComboBox::drop-down {{ border: none; width: 26px; }}
     QComboBox::down-arrow {{ image: url({chevron}); width: 14px; height: 14px; }}
     QDateEdit::drop-down {{ border: none; width: 26px; }}
@@ -122,6 +125,14 @@ def build_stylesheet() -> str:
     }}
 
     QDialog#formDialog {{ background: {t["surface"]}; }}
+    QFrame#cardHeader {{
+        background: transparent; border: none; border-bottom: 1px solid {t["border"]};
+    }}
+    QFrame#cardFooter {{
+        background: {t["background"]}; border: none; border-top: 1px solid {t["border"]};
+        border-bottom-left-radius: 10px; border-bottom-right-radius: 10px;
+    }}
+    QScrollArea#pageScroll, QWidget#pageContent {{ background: {t["background"]}; }}
     QFrame#dialogHeader {{ background: {t["surface"]}; border-bottom: 1px solid {t["border"]}; }}
     QLabel#dialogTitle {{ font-size: 14pt; font-weight: 600; }}
     QFrame#dialogFooter {{ background: {t["background"]}; border-top: 1px solid {t["border"]}; }}

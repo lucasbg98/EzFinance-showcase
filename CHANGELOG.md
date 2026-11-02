@@ -4,6 +4,17 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 
 ## [Não lançado]
 
+## [0.2.2] — 02/11/2026
+
+### Alterado
+- "Dados do consultório" em cartão largo com seções (identificação, responsável técnico, contato,
+  endereço), vários campos por linha, rótulo CNPJ/CPF conforme o tipo e destaque do campo com erro.
+- Listas sem grade vertical, com espaçamento nas células; grupos de categorias em negrito.
+- Tela de criar senha com rótulos acima dos campos; medidor de força só ao digitar.
+
+### Corrigido
+- Menu lateral não trocava de tela quando a seleção vinha de leitor de tela/automação (UIA).
+
 ## [0.2.1] — 02/11/2026
 
 ### Alterado

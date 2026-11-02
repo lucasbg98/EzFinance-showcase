@@ -257,3 +257,19 @@ def test_category_kind_follows_selected_group(qtbot: QtBot, data_dir: Path) -> N
     expense = next(g for g in groups if g.kind is CategoryKind.EXPENSE)
     dialog.parent_group.select(expense.id)
     assert dialog.kind.value() is CategoryKind.EXPENSE
+
+
+def test_menu_switches_page_on_selection_for_accessibility(qtbot: QtBot, data_dir: Path) -> None:
+    """Leitores de tela/UIA mudam a seleção (não o item atual): a página precisa trocar."""
+    window = _window(qtbot, data_dir)
+    _setup_vault(qtbot, window)
+    shell = _onboard(qtbot, window)
+
+    item = next(
+        shell.menu.item(row)
+        for row in range(shell.menu.count())
+        if shell.menu.item(row).text() == "Contatos"
+    )
+    item.setSelected(True)
+
+    assert isinstance(shell.stack.currentWidget(), ContactsPage)

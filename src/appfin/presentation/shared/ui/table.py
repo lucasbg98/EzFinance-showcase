@@ -99,6 +99,7 @@ def make_table(
     view.setAlternatingRowColors(True)
     view.verticalHeader().setVisible(False)
     view.setWordWrap(False)
+    view.setShowGrid(False)
     view.verticalHeader().setDefaultSectionSize(34)
     header = view.horizontalHeader()
     header.setDefaultAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)

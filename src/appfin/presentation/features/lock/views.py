@@ -29,6 +29,13 @@ def _label(text: str = "", object_name: str = "") -> QLabel:
     return label
 
 
+def _caption(text: str, buddy: QWidget) -> QLabel:
+    """Rótulo acima do campo, no mesmo padrão dos formulários do app."""
+    caption = _label(text, "fieldLabel")
+    caption.setBuddy(buddy)
+    return caption
+
+
 def _password_field(placeholder: str) -> QLineEdit:
     field = QLineEdit()
     field.setEchoMode(QLineEdit.EchoMode.Password)
@@ -80,13 +87,16 @@ class SetupView(QWidget):
             "relação entre si (mínimo de 12 caracteres).",
             "muted",
         )
+        self.strength.setVisible(False)
         layout = QVBoxLayout(self)
         layout.addWidget(
             _card(
                 _label("Bem-vinda! Crie a senha mestra", "title"),
                 explanation,
+                _caption("Senha mestra", self.password),
                 self.password,
                 self.strength,
+                _caption("Repita a senha mestra", self.confirmation),
                 self.confirmation,
                 self.message,
                 self.submit,
@@ -100,6 +110,7 @@ class SetupView(QWidget):
         self._vm.busy_changed.connect(self._on_busy)
 
     def _update_strength(self, text: str) -> None:
+        self.strength.setVisible(bool(text))
         if not text:
             self.strength.setText("")
             return

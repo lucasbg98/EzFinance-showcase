@@ -189,6 +189,11 @@ class CategoriesPage(QWidget):
             ]
         )
         item.setData(0, Qt.ItemDataRole.UserRole, category.id)
+        if category.is_group:
+            font = item.font(0)
+            font.setBold(True)
+            for column in range(4):
+                item.setFont(column, font)
         return item
 
     def _selected(self) -> Category | None:

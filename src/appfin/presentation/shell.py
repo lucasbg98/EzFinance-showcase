@@ -76,7 +76,8 @@ class AppShell(QWidget):
         content.setContentsMargins(16, 12, 16, 12)
         content.addWidget(self.stack)
         layout.addLayout(content, 1)
-        self.menu.currentItemChanged.connect(self._on_menu)
+        # Seleção (não só "item atual"): também responde a leitores de tela e automação (UIA).
+        self.menu.itemSelectionChanged.connect(self._on_selection)
         self.open(initial)
 
     def open(self, key: str) -> None:
@@ -88,9 +89,16 @@ class AppShell(QWidget):
     def page(self, key: str) -> QWidget | None:
         return self._pages.get(key)
 
-    def _on_menu(self, current: QListWidgetItem | None, _previous: object) -> None:
+    def _on_selection(self) -> None:
+        selected = self.menu.selectedItems()
+        if selected:
+            self._on_menu(selected[0])
+
+    def _on_menu(self, current: QListWidgetItem | None) -> None:
         if current is None:
             return
+        if self.menu.currentItem() is not current:
+            self.menu.setCurrentItem(current)
         key = current.data(Qt.ItemDataRole.UserRole)
         page = self._pages.get(key)
         if page is None:
