@@ -790,3 +790,4 @@ assinatura de código.
 | P18 | 🗣️ **Adiado:** gerar chaves de assinatura de **produção** (com senha; root offline em 2 pen drives) — ver `docs/RELEASE.md` | Obrigatório antes da 1ª instalação real |
 | P19 | 🗣️ **Decidido:** atualizações hospedadas no **Supabase Storage** (bucket público só com pacotes assinados), na fase 2 | Até lá, atualizar instalando o novo instalador |
 | P20 | Calibrar o custo do Argon2id no PC do consultório (meta ~1 s; hoje 0,26 s nesta máquina) | Força contra ataque offline |
+| P21 | Substituir o `tufup` (defasado: trava `tuf==4.0.*`) por `python-tuf` direto — cliente e publicação próprios | Obrigatório antes da 1ª instalação real; remove a exceção GHSA-qp9x-wp8f-qgjj |

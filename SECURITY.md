@@ -25,3 +25,9 @@ diretamente (não abra issue pública). Não inclua dados reais de pacientes ou 
 - Python não permite apagar segredos da memória com garantia; mitigamos com `bytearray` sobrescrito no bloqueio.
 - Perder a senha mestra **e** a chave de recuperação significa perder os dados (criptografia ponta a ponta).
 - Instalador ainda sem assinatura Authenticode (decisão do projeto); conferir o SHA-256 publicado.
+
+## Exceções ativas do scanner de dependências
+
+| ID | Pacote | Por que não se aplica hoje | Ação | Revisar até |
+|---|---|---|---|---|
+| GHSA-qp9x-wp8f-qgjj | `tuf` 4.0.0 (via `tufup`) | Afeta a comparação de caminhos de **delegações** no Windows; nosso repositório TUF não usa delegações (só os papéis root/targets/snapshot/timestamp). A correção (tuf ≥ 7) é incompatível com o `tufup`, que trava `tuf==4.0.*`. | Substituir o `tufup` por `python-tuf` direto antes da 1ª instalação real (pendência P21) | 2026-12-31 |

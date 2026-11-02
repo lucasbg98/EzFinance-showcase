@@ -4,6 +4,8 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 14  # mesma janela do exclude-newer: não propor versões recém-publicadas
     open-pull-requests-limit: 5
     groups:
       dev-tools:
@@ -13,3 +15,5 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 14

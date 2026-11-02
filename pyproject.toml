@@ -45,7 +45,7 @@ packages = ["src/appfin"]
 # Higiene de cadeia de suprimentos: ignora versões publicadas há menos de ~2 semanas
 # (pacotes maliciosos recém-publicados costumam ser removidos nesse intervalo).
 # Atualize esta data conscientemente ao subir dependências.
-exclude-newer = "2026-10-19T00:00:00Z"
+exclude-newer = "2026-10-20T00:00:00Z"
 
 # ---------------------------------------------------------------- ruff
 [tool.ruff]
