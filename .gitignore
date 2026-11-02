@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.hypothesis/
+.coverage
+coverage.xml
+htmlcov/
+
+# Build / empacotamento
+build/
+dist/
+*.spec.bak
+
+# Segredos e configuração local (NUNCA versionar)
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+packaging/tuf/keystore/
+
+# Dados locais do app (bancos cifrados, backups, logs) — nunca no repositório
+*.db
+*.db-wal
+*.db-shm
+*.bkp
+*.log
+local-data/
+
+# Prints do app de referência: material de terceiros, só para referência local
+referencias/
+
+# IDE / SO
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini

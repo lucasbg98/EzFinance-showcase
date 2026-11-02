@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Lint, tipos e testes (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          enable-cache: true
+
+      - name: Instalar Python e dependências (lockfile com hashes)
+        run: |
+          uv python install 3.13
+          uv sync --locked
+
+      - name: ruff (formatação)
+        run: uv run --locked ruff format --check .
+
+      - name: ruff (lint + regras de segurança)
+        run: uv run --locked ruff check --output-format=github .
+
+      - name: mypy (estrito)
+        run: uv run --locked mypy
+
+      - name: Testes (inclui Argon2id com parâmetros de produção)
+        run: uv run --locked pytest --cov --cov-report=term-missing
+
+      - name: Smoke test — o pacote importa e o banco cifrado abre
+        run: uv run --locked python -c "import appfin.presentation.app, appfin.bootstrap; print('ok')"

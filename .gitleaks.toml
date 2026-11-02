@@ -1,0 +1,15 @@
+# Configuração do gitleaks: regras padrão + regras do projeto.
+[extend]
+useDefault = true
+
+[[rules]]
+id = "appfin-recovery-key"
+description = "Possível chave de recuperação do AppFinanceiro (13 grupos de 4 caracteres base32)"
+regex = '''\b[A-Z2-7]{4}(?:-[A-Z2-7]{4}){12}\b'''
+
+[[rules]]
+id = "supabase-service-role"
+description = "Chave service_role do Supabase (nunca pode ir para o cliente nem para o repositório)"
+regex = '''(?i)service_role'''
+[rules.allowlist]
+paths = ['''docs/.*''', '''\.claude/.*''', '''SECURITY\.md''', '''\.gitleaks\.toml''', '''skills/.*''']
