@@ -6,6 +6,10 @@ import sys
 
 
 def main() -> int:
+    if "--self-test" in sys.argv:
+        from appfin.self_test import run_self_test
+
+        return run_self_test()
     from appfin.presentation.app import run
 
     return run()

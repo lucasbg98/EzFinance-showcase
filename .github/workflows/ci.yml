@@ -47,3 +47,21 @@ jobs:
 
       - name: Smoke test — o pacote importa e o banco cifrado abre
         run: uv run --locked python -c "import appfin.presentation.app, appfin.bootstrap; print('ok')"
+
+  bundle:
+    name: Empacotamento + autoteste do executável
+    runs-on: windows-latest
+    needs: test
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          enable-cache: true
+      - name: PyInstaller (onedir) e autoteste do .exe gerado
+        run: |
+          uv python install 3.13
+          uv sync --locked
+          uv run --locked python packaging/release.py build --no-installer

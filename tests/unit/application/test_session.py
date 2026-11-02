@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from appfin.application.ports import InvalidCredentialError
+from appfin.application.ports import InvalidCredentialError, OrphanedDataError
 from appfin.application.session import AppSession, SessionState, WeakPasswordError
 
 STRONG = "girassol trator piano nuvem"
@@ -50,13 +50,18 @@ class FakeVault:
 
 class FakeStore:
     def __init__(self) -> None:
+        self.has_file = False
         self.is_open = False
         self.audit: list[tuple[str, str]] = []
         self.fail_open = False
 
+    def exists(self) -> bool:
+        return self.has_file
+
     def open(self, key: FakeKey) -> None:
         if self.fail_open:
             raise RuntimeError("falha simulada")
+        self.has_file = True
         self.is_open = True
 
     def close(self) -> None:
@@ -192,3 +197,16 @@ def test_events_and_audit_never_carry_secrets(
     assert STRONG not in dump
     assert "tentativa-errada-xyz" not in dump
     assert "RECOVERY-KEY" not in dump
+
+
+def test_setup_refuses_when_database_exists_without_vault(
+    parts: tuple[FakeVault, FakeStore, FakeEvents],
+) -> None:
+    session = _session(parts)
+    vault, store, _ = parts
+    store.has_file = True
+
+    with pytest.raises(OrphanedDataError):
+        session.create(STRONG)
+
+    assert not vault.exists(), "não pode gravar um cofre que nunca abriria o banco"

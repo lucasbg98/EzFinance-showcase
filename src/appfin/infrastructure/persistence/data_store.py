@@ -26,6 +26,9 @@ class SqlCipherDataStore:
             raise StorageUnavailableError("Banco fechado.")
         return self._connection
 
+    def exists(self) -> bool:
+        return self._path.exists()
+
     def open(self, key: DataKey) -> None:
         if not isinstance(key, SecretBytes):
             raise TypeError("Chave de dados de tipo inesperado.")

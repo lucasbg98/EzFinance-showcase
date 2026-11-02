@@ -1,0 +1,71 @@
+{
+ "signatures": [
+  {
+   "keyid": "adacd96edb82d9c1a57669f010404c0ac1f66c0d4d23130fc5e4f9094b2ce75f",
+   "sig": "43526bc254b0624fd42d472f49aa75844cf23f33239b3a6436f57dd83d485f6f3d2de432e7680669166d79db1319761a7f031229d4e309db85d0651b9a39d301"
+  }
+ ],
+ "signed": {
+  "_type": "root",
+  "consistent_snapshot": false,
+  "expires": "2027-11-02T21:26:04Z",
+  "keys": {
+   "4bb72d88950527e7b2afc805535a9c2f73e23319250cba7974abfa85ff3991e2": {
+    "keytype": "ed25519",
+    "keyval": {
+     "public": "7be6a1e79914995a1f6a67cbad19d6eb14a0545dde87305fa1599ca297f53096"
+    },
+    "scheme": "ed25519"
+   },
+   "adacd96edb82d9c1a57669f010404c0ac1f66c0d4d23130fc5e4f9094b2ce75f": {
+    "keytype": "ed25519",
+    "keyval": {
+     "public": "7f4d75b85c26e72b6cbaa9400b55a69677b3aea119f128daff351e79183c3fb0"
+    },
+    "scheme": "ed25519"
+   },
+   "c03ff0cdc9b5c9455845ab8c351081e0cc11c5f15d2a96c0028eb7a0f2622191": {
+    "keytype": "ed25519",
+    "keyval": {
+     "public": "37e6869906504e49468770b7140279abf64d261387009374430f121bbff751d9"
+    },
+    "scheme": "ed25519"
+   },
+   "f484831a8291d6b4e5c7671442eff5d67faed69f8706fb3bd9b042e8904338fa": {
+    "keytype": "ed25519",
+    "keyval": {
+     "public": "59c499d463f0d5ad4824e8c30fe25493f967983d862716b7bc31612524df1277"
+    },
+    "scheme": "ed25519"
+   }
+  },
+  "roles": {
+   "root": {
+    "keyids": [
+     "adacd96edb82d9c1a57669f010404c0ac1f66c0d4d23130fc5e4f9094b2ce75f"
+    ],
+    "threshold": 1
+   },
+   "snapshot": {
+    "keyids": [
+     "c03ff0cdc9b5c9455845ab8c351081e0cc11c5f15d2a96c0028eb7a0f2622191"
+    ],
+    "threshold": 1
+   },
+   "targets": {
+    "keyids": [
+     "f484831a8291d6b4e5c7671442eff5d67faed69f8706fb3bd9b042e8904338fa"
+    ],
+    "threshold": 1
+   },
+   "timestamp": {
+    "keyids": [
+     "4bb72d88950527e7b2afc805535a9c2f73e23319250cba7974abfa85ff3991e2"
+    ],
+    "threshold": 1
+   }
+  },
+  "spec_version": "1.0.31",
+  "version": 1
+ }
+}

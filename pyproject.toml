@@ -13,6 +13,7 @@ dependencies = [
     "cryptography==50.0.2",        # HKDF
     "sqlcipher3==0.6.4",           # SQLite cifrado (SQLCipher 4.x)
     "zxcvbn==4.5.0",               # medidor de força da senha mestra
+    "tufup==0.10.0",               # atualizações assinadas (TUF)
 ]
 
 [project.scripts]
@@ -30,6 +31,7 @@ dev = [
     "bandit==1.8.6",
     "pre-commit==4.3.0",
     "argon2-cffi==25.1.0",          # só nos testes: 2ª implementação para conferir o Argon2id
+    "pyinstaller==6.22.3",          # empacotamento (onedir)
 ]
 
 [build-system]
@@ -68,6 +70,7 @@ known-first-party = ["appfin", "tests"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101", "S105", "S106", "ARG001", "ARG002"]
+"packaging/**" = ["T201"]  # scripts de linha de comando
 
 [tool.ruff.format]
 quote-style = "double"
@@ -81,7 +84,7 @@ packages = ["appfin"]
 warn_unreachable = true
 
 [[tool.mypy.overrides]]
-module = ["sqlcipher3.*", "zxcvbn.*", "nacl.*"]
+module = ["sqlcipher3.*", "zxcvbn.*", "nacl.*", "tufup.*"]
 ignore_missing_imports = true
 
 # ---------------------------------------------------------------- pytest
@@ -93,7 +96,11 @@ qt_api = "pyside6"
 markers = [
     "slow: testes lentos (ex.: Argon2id com parâmetros de produção)",
 ]
-filterwarnings = ["error"]
+filterwarnings = [
+    "error",
+    # tufup (lado do build) ainda usa datetime.utcnow(); não afeta a verificação no cliente.
+    "ignore:datetime.datetime.utcnow:DeprecationWarning:tufup.*",
+]
 
 [tool.coverage.run]
 source = ["appfin"]

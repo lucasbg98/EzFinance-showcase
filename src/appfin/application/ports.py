@@ -14,6 +14,10 @@ class StorageUnavailableError(Exception):
     """Cofre ou banco ausente, corrompido ou de versão incompatível."""
 
 
+class OrphanedDataError(Exception):
+    """Existe um banco de dados, mas não o cofre que guarda a chave dele."""
+
+
 class DataKey(Protocol):
     """Chave de dados (DEK) opaca para a aplicação."""
 
@@ -36,6 +40,10 @@ class KeyVault(Protocol):
 
 
 class DataStore(Protocol):
+    def exists(self) -> bool:
+        """Há um banco de dados no disco (de qualquer instalação)."""
+        ...
+
     def open(self, key: DataKey) -> None:
         """Abre o banco cifrado e aplica migrações pendentes."""
         ...

@@ -146,3 +146,35 @@ def test_session_is_locked_when_window_closes(qtbot: QtBot, data_dir: Path) -> N
     window.close()
 
     assert session.state is SessionState.LOCKED
+
+
+def test_update_confirmation_defaults_to_decline(qtbot: QtBot) -> None:
+    from PySide6.QtCore import QTimer
+    from PySide6.QtWidgets import QApplication, QMessageBox, QWidget
+
+    from appfin.presentation.features.updates.update_controller import UpdateController
+
+    parent = QWidget()
+    qtbot.addWidget(parent)
+    controller = UpdateController(None, parent, lambda _reason: None)
+    seen: dict[str, str] = {}
+
+    def respond(action: str) -> None:
+        box = QApplication.activeModalWidget()
+        assert isinstance(box, QMessageBox)
+        seen["default"] = box.defaultButton().text()
+        seen["buttons"] = ",".join(b.text() for b in box.buttons())
+        if action == "escape":
+            box.reject()
+        else:
+            next(b for b in box.buttons() if b.text() == action).click()
+
+    QTimer.singleShot(200, lambda: respond("escape"))
+    assert controller._ask("teste") is False
+    QTimer.singleShot(200, lambda: respond("Agora não"))
+    assert controller._ask("teste") is False
+    QTimer.singleShot(200, lambda: respond("Atualizar agora"))
+    assert controller._ask("teste") is True
+
+    assert seen["default"] == "Agora não"
+    assert "&" not in seen["buttons"], "sem atalhos de letra que confirmem por engano"

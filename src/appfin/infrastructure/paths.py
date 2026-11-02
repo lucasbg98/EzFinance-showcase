@@ -35,6 +35,16 @@ class AppPaths:
         return self.root / "appfin.lock"
 
 
+def default_update_cache() -> Path:
+    """Cache de atualizações em ``%LOCALAPPDATA%`` (não sincroniza em perfis móveis)."""
+    override = os.environ.get(DATA_DIR_ENV)
+    if override:
+        return Path(override).resolve() / "updates"
+    local = os.environ.get("LOCALAPPDATA")
+    base = Path(local) if local else Path.home() / "AppData" / "Local"
+    return base / APP_DIR_NAME / "updates"
+
+
 def default_paths() -> AppPaths:
     override = os.environ.get(DATA_DIR_ENV)
     if override:

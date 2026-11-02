@@ -17,6 +17,7 @@ from appfin.application.ports import (
     EventLog,
     InvalidCredentialError,
     KeyVault,
+    OrphanedDataError,
 )
 
 MAX_UNLOCK_DELAY_SECONDS = 60
@@ -73,6 +74,9 @@ class AppSession:
         """Cria o cofre e o banco. Retorna a chave de recuperação (mostrar uma única vez)."""
         if self.state is not SessionState.NEEDS_SETUP:
             raise RuntimeError("O cofre já existe.")
+        if self._store.exists():
+            # Criar um cofre novo aqui geraria uma chave que nunca abriria o banco existente.
+            raise OrphanedDataError("Banco existente sem o cofre correspondente.")
         assessment = assess_master_password(password, user_inputs)
         if not assessment.is_acceptable:
             raise WeakPasswordError(assessment.problems)

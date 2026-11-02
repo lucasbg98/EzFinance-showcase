@@ -12,7 +12,11 @@ from typing import Any
 from PySide6.QtCore import QObject, Signal
 
 from appfin.application.password_policy import PasswordAssessment, assess_master_password
-from appfin.application.ports import InvalidCredentialError, StorageUnavailableError
+from appfin.application.ports import (
+    InvalidCredentialError,
+    OrphanedDataError,
+    StorageUnavailableError,
+)
 from appfin.application.session import AppSession, SessionState, WeakPasswordError
 from appfin.infrastructure.app_logging import log_exception
 from appfin.presentation.shared.worker import run_in_background
@@ -99,6 +103,13 @@ class LockViewModel(QObject):
             delay = self._session.unlock_delay_seconds()
             if delay:
                 self.delay_started.emit(delay)
+        elif isinstance(error, OrphanedDataError):
+            log_exception(event, error, error_code="E-ORPHANED-DATA")
+            self.error.emit(
+                "Já existem dados do app neste computador, mas o arquivo do cofre (vault.json) "
+                "não foi encontrado. Não crie um cofre novo: restaure o vault.json ou um backup. "
+                "(código E-ORPHANED-DATA)"
+            )
         elif isinstance(error, StorageUnavailableError):
             log_exception(event, error, error_code="E-STORAGE")
             self.error.emit("Não foi possível abrir os dados do app. (código E-STORAGE)")

@@ -40,3 +40,6 @@ referencias/
 .idea/
 Thumbs.db
 desktop.ini
+
+# Configuração local do tufup (gerada pelo script de release)
+.tufup-repo-config

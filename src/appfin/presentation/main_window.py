@@ -11,9 +11,11 @@ from PySide6.QtWidgets import QLabel, QMainWindow, QStackedWidget, QToolBar, QVB
 
 from appfin import __version__
 from appfin.application.session import AppSession, SessionState
+from appfin.infrastructure.updater import Updater
 from appfin.presentation.auto_lock import InactivityLock, WindowsSessionWatcher
 from appfin.presentation.features.lock.view_model import LockViewModel
 from appfin.presentation.features.lock.views import RecoveryKeyView, SetupView, UnlockView
+from appfin.presentation.features.updates.update_controller import UpdateController
 
 APP_TITLE = "AppFinanceiro"
 
@@ -38,7 +40,9 @@ class HomePlaceholder(QWidget):
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, session: AppSession, auto_lock_minutes: float) -> None:
+    def __init__(
+        self, session: AppSession, auto_lock_minutes: float, updater: Updater | None = None
+    ) -> None:
         super().__init__()
         self.setWindowTitle(f"{APP_TITLE} {__version__}")
         self.resize(1100, 720)
@@ -63,6 +67,11 @@ class MainWindow(QMainWindow):
         self._toolbar = QToolBar("Ações")
         self._toolbar.setMovable(False)
         self._toolbar.addAction(self._lock_action)
+        self._updates = UpdateController(updater, self, self.lock)
+        self._checked_updates = False
+        self._update_action = QAction("Verificar atualizações", self)
+        self._update_action.triggered.connect(lambda: self._updates.check(silent=False))
+        self._toolbar.addAction(self._update_action)
         self.addToolBar(self._toolbar)
 
         self._vm.created.connect(self._on_created)
@@ -118,6 +127,11 @@ class MainWindow(QMainWindow):
         self._stack.setCurrentWidget(self._home)
         self._toolbar.setVisible(True)
         self._inactivity.start()
+        if not self._checked_updates and self._updates.is_enabled:
+            # Uma verificação automática por execução, depois do desbloqueio (sem incomodar se não
+            # houver novidade).
+            self._checked_updates = True
+            self._updates.check(silent=True)
 
     def _destroy_home(self) -> None:
         if self._home is not None:
