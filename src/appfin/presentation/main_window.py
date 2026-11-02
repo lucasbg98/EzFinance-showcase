@@ -1,52 +1,45 @@
 """Janela principal: alterna entre configuração, chave de recuperação, desbloqueio e o app.
 
-Ao bloquear, a página com dados é **destruída** (não só escondida) para limpar o estado das telas.
+Depois do desbloqueio: no primeiro uso, os dados do consultório (que criam categorias e conta
+padrão); depois, o app com menu lateral. Ao bloquear, a página com dados é **destruída** (não só
+escondida) para limpar o estado das telas.
 """
 
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QCloseEvent, QKeySequence
-from PySide6.QtWidgets import QLabel, QMainWindow, QStackedWidget, QToolBar, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QMainWindow, QStackedWidget, QToolBar, QWidget
 
 from appfin import __version__
 from appfin.application.session import AppSession, SessionState
 from appfin.infrastructure.updater import Updater
 from appfin.presentation.auto_lock import InactivityLock, WindowsSessionWatcher
+from appfin.presentation.features.company.view import CompanyForm
 from appfin.presentation.features.lock.view_model import LockViewModel
 from appfin.presentation.features.lock.views import RecoveryKeyView, SetupView, UnlockView
 from appfin.presentation.features.updates.update_controller import UpdateController
+from appfin.presentation.shared.formatting import ValuesVisibility
+from appfin.presentation.shell import AppShell
+from appfin.presentation.workspace import WorkspaceFactory
 
 APP_TITLE = "AppFinanceiro"
 
 
-class HomePlaceholder(QWidget):
-    """Página inicial provisória da fase 0 (as telas do consultório chegam na fase 1)."""
-
-    def __init__(self) -> None:
-        super().__init__()
-        layout = QVBoxLayout(self)
-        title = QLabel("Cofre aberto")
-        title.setObjectName("title")
-        text = QLabel(
-            "A base segura do app está funcionando: dados cifrados, bloqueio automático e "
-            "chave de recuperação. As telas do consultório chegam na fase 1."
-        )
-        for label in (title, text):
-            label.setTextFormat(Qt.TextFormat.PlainText)
-            label.setWordWrap(True)
-            layout.addWidget(label)
-        layout.addStretch(1)
-
-
 class MainWindow(QMainWindow):
     def __init__(
-        self, session: AppSession, auto_lock_minutes: float, updater: Updater | None = None
+        self,
+        session: AppSession,
+        auto_lock_minutes: float,
+        workspace_factory: WorkspaceFactory,
+        updater: Updater | None = None,
     ) -> None:
         super().__init__()
         self.setWindowTitle(f"{APP_TITLE} {__version__}")
         self.resize(1100, 720)
         self._session = session
+        self._workspace_factory = workspace_factory
+        self.visibility = ValuesVisibility()
         self._vm = LockViewModel(session)
         self._inactivity = InactivityLock(auto_lock_minutes, self)
         self._session_watcher = WindowsSessionWatcher(self)
@@ -67,6 +60,12 @@ class MainWindow(QMainWindow):
         self._toolbar = QToolBar("Ações")
         self._toolbar.setMovable(False)
         self._toolbar.addAction(self._lock_action)
+        self._hide_action = QAction("Ocultar valores", self)
+        self._hide_action.setCheckable(True)
+        self._hide_action.setShortcut(QKeySequence("Ctrl+H"))
+        self._hide_action.setToolTip("Mostra R$ ••••• no lugar dos valores (Ctrl+H)")
+        self._hide_action.toggled.connect(self.visibility.set_hidden)
+        self._toolbar.addAction(self._hide_action)
         self._updates = UpdateController(updater, self, self.lock)
         self._checked_updates = False
         self._update_action = QAction("Verificar atualizações", self)
@@ -120,11 +119,20 @@ class MainWindow(QMainWindow):
         # sumir antes de ser anotada. (Bloquear o Windows ainda bloqueia; "gerar nova chave de
         # recuperação" entra na fase 1 para cobrir esse caso e o de chave perdida.)
 
+    @property
+    def data_page(self) -> QWidget | None:
+        """Página com dados (onboarding ou app), ou ``None`` se bloqueado."""
+        return self._home
+
     def _show_home(self) -> None:
         self._destroy_home()
-        self._home = HomePlaceholder()
-        self._stack.addWidget(self._home)
-        self._stack.setCurrentWidget(self._home)
+        workspace = self._workspace_factory(self.visibility)
+        if workspace.catalog.get_company() is None:
+            onboarding = CompanyForm(workspace, onboarding=True)
+            onboarding.saved.connect(lambda _company: self._show_shell(initial="accounts"))
+            self._set_home(onboarding)
+        else:
+            self._set_home(AppShell(workspace))
         self._toolbar.setVisible(True)
         self._inactivity.start()
         if not self._checked_updates and self._updates.is_enabled:
@@ -132,6 +140,15 @@ class MainWindow(QMainWindow):
             # houver novidade).
             self._checked_updates = True
             self._updates.check(silent=True)
+
+    def _show_shell(self, initial: str) -> None:
+        self._destroy_home()
+        self._set_home(AppShell(self._workspace_factory(self.visibility), initial=initial))
+
+    def _set_home(self, page: QWidget) -> None:
+        self._home = page
+        self._stack.addWidget(page)
+        self._stack.setCurrentWidget(page)
 
     def _destroy_home(self) -> None:
         if self._home is not None:

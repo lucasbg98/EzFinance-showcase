@@ -4,6 +4,21 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 
 ## [Não lançado]
 
+## [0.2.0] — 02/11/2026
+
+### Adicionado (fase 1 — incrementos 1.1 e 1.2)
+- Núcleo do domínio: empresa, contas, categorias, contatos, lançamentos, parcelamento (dias/meses),
+  transferências em duas pernas, DRE caixa/competência, relatórios agregados no banco.
+- Interface: menu lateral, dados do consultório no primeiro uso (cria categorias odontológicas e a
+  conta caixa), cadastros de contas, categorias e contatos, "Ocultar valores" (Ctrl+H).
+- Campo de valor em R$ estilo app de banco; formatação pt-BR centralizada; tema claro explícito.
+
+### Corrigido
+- Combos convertiam enums em texto (CNPJ válido recusado); botão Salvar dos formulários inerte.
+- Caracteres invisíveis/bidi no código-fonte (Trojan Source) + teste de higiene.
+
+## [0.1.0] — 02/11/2026
+
 ### Adicionado (fase 0 — fundação)
 - Projeto Python 3.13 com `uv` (lockfile com hashes e janela de 2 semanas para versões novas).
 - Núcleo de criptografia: Argon2id, HKDF, XChaCha20-Poly1305, cofre com chave de recuperação.

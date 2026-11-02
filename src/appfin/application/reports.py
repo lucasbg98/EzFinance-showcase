@@ -51,6 +51,9 @@ class ReportService:
             monthly_flow=queries.monthly_flow(year),
         )
 
+    def account_balances(self) -> list[AccountBalance]:
+        return self._queries().account_balances(self._today())
+
     def income_statement(self, start: date, end: date, basis: ReportBasis) -> list[StatementLine]:
         return build_income_statement(self._queries().income_statement_totals(start, end, basis))
 

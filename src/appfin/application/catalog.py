@@ -125,9 +125,7 @@ class CatalogService:
         with self._uow() as uow:
             _required(uow.contacts.get(contact_id))
             if uow.contacts.is_referenced(contact_id):
-                raise BusinessRuleError(
-                    "Este contato tem lançamentos e não pode ser excluído. Arquive-o."
-                )
+                raise BusinessRuleError("Este contato tem lançamentos e não pode ser excluído.")
             uow.contacts.soft_delete(contact_id)
             uow.commit()
 

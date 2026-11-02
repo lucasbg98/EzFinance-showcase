@@ -10,9 +10,9 @@ from PySide6.QtWidgets import QLabel
 from pytestqt.qtbot import QtBot
 
 from appfin.application.session import SessionState
-from appfin.bootstrap import AppConfig, build_session
+from appfin.bootstrap import AppConfig, build_app
 from appfin.infrastructure.paths import AppPaths
-from appfin.presentation.main_window import HomePlaceholder, MainWindow
+from appfin.presentation.main_window import MainWindow
 from tests.support import FAST_MINIMUM, FAST_PARAMS
 
 STRONG = "girassol trator piano nuvem"
@@ -26,7 +26,8 @@ def _window(qtbot: QtBot, root: Path, auto_lock_minutes: float = 3) -> MainWindo
         kdf_minimum=FAST_MINIMUM,
         auto_lock_minutes=auto_lock_minutes,
     )
-    window = MainWindow(build_session(config), config.auto_lock_minutes)
+    container = build_app(config)
+    window = MainWindow(container.session, config.auto_lock_minutes, container.workspace_factory)
     qtbot.addWidget(window)
     window.show()
     return window
@@ -43,10 +44,14 @@ def _complete_setup(qtbot: QtBot, window: MainWindow) -> str:
     window.recovery_view.saved.setChecked(True)
     window.recovery_view.last_group.setText(shown_key.split()[-1].lower())
     qtbot.mouseClick(window.recovery_view.submit, Qt.MouseButton.LeftButton)
-    qtbot.waitUntil(
-        lambda: isinstance(window.centralWidget().currentWidget(), HomePlaceholder), timeout=TIMEOUT
-    )
+    qtbot.waitUntil(lambda: _on_data_page(window), timeout=TIMEOUT)
     return shown_key
+
+
+def _on_data_page(window: MainWindow) -> bool:
+    return (
+        window.data_page is not None and window.centralWidget().currentWidget() is window.data_page
+    )
 
 
 def _current(window: MainWindow) -> object:
@@ -76,7 +81,7 @@ def test_first_use_lock_and_unlock(qtbot: QtBot, data_dir: Path) -> None:
     qtbot.waitUntil(window.unlock_view.submit.isEnabled, timeout=TIMEOUT)
     window.unlock_view.secret.setText(STRONG)
     qtbot.mouseClick(window.unlock_view.submit, Qt.MouseButton.LeftButton)
-    qtbot.waitUntil(lambda: isinstance(_current(window), HomePlaceholder), timeout=TIMEOUT)
+    qtbot.waitUntil(lambda: _on_data_page(window), timeout=TIMEOUT)
 
 
 def test_unlock_with_recovery_key(qtbot: QtBot, data_dir: Path) -> None:
@@ -88,7 +93,7 @@ def test_unlock_with_recovery_key(qtbot: QtBot, data_dir: Path) -> None:
     window.unlock_view.secret.setText(shown_key)
     qtbot.mouseClick(window.unlock_view.submit, Qt.MouseButton.LeftButton)
 
-    qtbot.waitUntil(lambda: isinstance(_current(window), HomePlaceholder), timeout=TIMEOUT)
+    qtbot.waitUntil(lambda: _on_data_page(window), timeout=TIMEOUT)
 
 
 def test_recovery_key_confirmation_must_match(qtbot: QtBot, data_dir: Path) -> None:
@@ -124,7 +129,7 @@ def test_inactivity_locks_and_destroys_the_data_page(qtbot: QtBot, data_dir: Pat
 
     qtbot.waitUntil(lambda: _current(window) is window.unlock_view, timeout=TIMEOUT)
 
-    assert not window.findChildren(HomePlaceholder)
+    assert window.data_page is None
 
 
 @pytest.mark.parametrize("attribute", ["setup_view", "recovery_view", "unlock_view"])
