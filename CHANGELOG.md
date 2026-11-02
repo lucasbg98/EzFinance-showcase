@@ -4,6 +4,16 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 
 ## [Não lançado]
 
+## [0.2.1] — 02/11/2026
+
+### Alterado
+- Novo visual dos modais: cabeçalho com título e subtítulo, seções, rótulos acima dos campos,
+  vários campos por linha, faixa de aviso (LGPD), rodapé com ações e destaque do campo com erro.
+- Contato: tipos como "chips", endereço opcional recolhido, rótulo CPF/CNPJ conforme a pessoa.
+- Categoria: o tipo acompanha o grupo escolhido.
+- Listas: mensagem quando vazias, cabeçalho alinhado à esquerda, busca com lupa e limpar.
+- Combos e datas com seta própria; checkbox com marca de seleção.
+
 ## [0.2.0] — 02/11/2026
 
 ### Adicionado (fase 1 — incrementos 1.1 e 1.2)

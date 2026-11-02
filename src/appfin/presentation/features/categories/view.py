@@ -19,6 +19,7 @@ from appfin.domain.entities import NEW_ID, Category
 from appfin.domain.enums import CategoryKind, DreGroup
 from appfin.presentation.shared.ui.feedback import show_error
 from appfin.presentation.shared.ui.forms import (
+    Field,
     FormDialog,
     combo,
     plain_label,
@@ -54,24 +55,48 @@ class CategoryDialog(FormDialog):
         parent: QWidget,
     ) -> None:
         editing_group = category.is_group if category else as_group
-        title = ("Editar " if category else "Novo ") + ("grupo" if editing_group else "categoria")
-        super().__init__(title.replace("Novo categoria", "Nova categoria"), parent)
+        noun = "grupo" if editing_group else "categoria"
+        title = (
+            f"Editar {noun}" if category else ("Novo grupo" if editing_group else "Nova categoria")
+        )
+        super().__init__(
+            title,
+            parent,
+            subtitle=(
+                "Grupos reúnem categorias (ex.: Despesas operacionais)."
+                if editing_group
+                else "Classifica receitas e despesas e define a linha do DRE."
+            ),
+            save_text=f"Salvar {noun}",
+        )
         self._ws = ws
         self._category = category
         self._is_group = editing_group
         self.name = text_field(60, "Nome")
         self.kind = combo([(label, kind) for kind, label in KIND_LABELS.items()], "Tipo")
         self.dre = combo(
-            [("(do grupo)" if not editing_group else "(nenhum)", None)]
+            [("Usar o do grupo" if not editing_group else "Nenhum", None)]
             + [(label, group) for group, label in DRE_LABELS.items()],
             "Grupo do DRE",
         )
-        self.form.addRow("Nome:*", self.name)
-        self.form.addRow("Tipo:", self.kind)
         self.parent_group = combo([(g.name, g.id) for g in groups], "Grupo")
+        self.add_row(Field("Nome", self.name, "name", required=True))
+        if editing_group:
+            self.add_row(
+                Field("Tipo", self.kind, "kind"), Field("Linha do DRE", self.dre, "dre_group")
+            )
+        else:
+            self.add_row(
+                Field("Grupo", self.parent_group, "parent_id", required=True),
+                Field("Tipo", self.kind, "kind"),
+            )
+            self.add_row(Field("Linha do DRE", self.dre, "dre_group"))
+        self._groups_by_id = {g.id: g for g in groups}
         if not editing_group:
-            self.form.addRow("Grupo:*", self.parent_group)
-        self.form.addRow("Grupo do DRE:", self.dre)
+            # O tipo acompanha o grupo escolhido (ex.: "Custos diretos" → Despesa).
+            self.parent_group.currentIndexChanged.connect(self._follow_group_kind)
+            if category is None:
+                self._follow_group_kind()
         if category:
             self.name.setText(category.name)
             select_data(self.kind, category.kind)
@@ -79,6 +104,11 @@ class CategoryDialog(FormDialog):
             if category.parent_id:
                 select_data(self.parent_group, category.parent_id)
         self.on_save(self._save)
+
+    def _follow_group_kind(self) -> None:
+        group = self._groups_by_id.get(self.parent_group.value())
+        if group is not None:
+            self.kind.select(group.kind)
 
     def _save(self) -> Category:
         parent_id = None if self._is_group else self.parent_group.value()

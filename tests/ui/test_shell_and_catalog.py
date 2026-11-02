@@ -208,3 +208,52 @@ def test_category_dialog_creates_subcategory_with_enum_values(qtbot: QtBot, data
     assert dialog.error.text() == ""
     saved = dialog.result_value
     assert saved.kind is CategoryKind.EXPENSE and saved.parent_id == expenses.id
+
+
+def test_dialog_highlights_invalid_field_and_hides_optional_address(
+    qtbot: QtBot, data_dir: Path
+) -> None:
+    window = _window(qtbot, data_dir)
+    _setup_vault(qtbot, window)
+    shell = _onboard(qtbot, window)
+    shell.open("contacts")
+    page = shell.page("contacts")
+    assert isinstance(page, ContactsPage)
+    dialog = ContactDialog(page._ws, None, page)
+    qtbot.addWidget(dialog)
+    dialog.show()
+
+    assert all(not row.isVisible() for row in dialog.address_rows), "endereço começa recolhido"
+    dialog.address_toggle.click()
+    assert all(row.isVisible() for row in dialog.address_rows)
+
+    dialog.name.setText("Paciente Fictícia")
+    dialog.document.setText("123.456.789-00")
+    dialog._on_save()
+    assert dialog.document.property("invalid") is True
+
+    dialog.document.setText("529.982.247-25")
+    dialog._on_save()
+    assert dialog.document.property("invalid") is False
+    assert dialog.result_value is not None
+
+
+def test_category_kind_follows_selected_group(qtbot: QtBot, data_dir: Path) -> None:
+    from appfin.domain.enums import CategoryKind
+    from appfin.presentation.features.categories.view import CategoryDialog
+
+    window = _window(qtbot, data_dir)
+    _setup_vault(qtbot, window)
+    shell = _onboard(qtbot, window)
+    shell.open("categories")
+    page = shell.page("categories")
+    assert isinstance(page, CategoriesPage)
+    groups = page._groups()
+    dialog = CategoryDialog(page._ws, None, groups, as_group=False, parent=page)
+
+    revenue = next(g for g in groups if g.kind is CategoryKind.INCOME)
+    dialog.parent_group.select(revenue.id)
+    assert dialog.kind.value() is CategoryKind.INCOME
+    expense = next(g for g in groups if g.kind is CategoryKind.EXPENSE)
+    dialog.parent_group.select(expense.id)
+    assert dialog.kind.value() is CategoryKind.EXPENSE

@@ -5,22 +5,25 @@ padrão que mostra o erro de validação do domínio na própria tela.
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable
+from dataclasses import dataclass
 from typing import Any
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
-    QDialogButtonBox,
-    QFormLayout,
+    QFrame,
+    QHBoxLayout,
     QLabel,
     QLineEdit,
     QPlainTextEdit,
+    QPushButton,
     QVBoxLayout,
     QWidget,
 )
 
-from appfin.domain.errors import DomainError
+from appfin.domain.errors import DomainError, ValidationError
 from appfin.presentation.shared.ui.feedback import friendly_message
 
 
@@ -50,11 +53,23 @@ def text_field(max_length: int, accessible_name: str, placeholder: str = "") -> 
     return field
 
 
+def search_field(placeholder: str, accessible_name: str) -> QLineEdit:
+    """Campo de busca com ícone de lupa nativo (não cobre o texto) e botão de limpar."""
+    from importlib import resources
+
+    field = text_field(100, accessible_name, placeholder)
+    field.setObjectName("search")
+    field.setClearButtonEnabled(True)
+    icon_path = resources.files("appfin.resources").joinpath("icons", "search.svg")
+    field.addAction(QIcon(str(icon_path)), QLineEdit.ActionPosition.LeadingPosition)
+    return field
+
+
 def notes_field(max_length: int, accessible_name: str) -> QPlainTextEdit:
     field = QPlainTextEdit()
     field.setAccessibleName(accessible_name)
     field.setTabChangesFocus(True)
-    field.setFixedHeight(70)
+    field.setFixedHeight(72)
 
     def enforce_limit() -> None:
         text = field.toPlainText()
@@ -107,40 +122,162 @@ def select_data(box: ValueCombo, value: Any) -> None:
     box.select(value)
 
 
-class FormDialog(QDialog):
-    """Diálogo de cadastro: ``save`` chama o caso de uso; erro de regra aparece no rodapé."""
+@dataclass(frozen=True, slots=True)
+class Field:
+    """Campo do formulário: rótulo acima do controle; ``name`` liga o campo ao erro do domínio."""
 
-    def __init__(self, title: str, parent: QWidget | None = None) -> None:
+    label: str
+    widget: QWidget
+    name: str = ""
+    required: bool = False
+    stretch: int = 1
+
+
+def chip(text: str, accessible_name: str = "") -> QPushButton:
+    """Botão alternável em formato de pílula (seleção múltipla mais clara que checkbox)."""
+    button = QPushButton(text)
+    button.setObjectName("chip")
+    button.setCheckable(True)
+    button.setCursor(Qt.CursorShape.PointingHandCursor)
+    button.setAccessibleName(accessible_name or text)
+    return button
+
+
+def _repolish(widget: QWidget) -> None:
+    widget.style().unpolish(widget)
+    widget.style().polish(widget)
+
+
+class FormDialog(QDialog):
+    """Modal de cadastro padrão do app.
+
+    Estrutura: cabeçalho (título + subtítulo) · corpo com seções e linhas de campos (rótulo acima)
+    · mensagem de erro · rodapé com "Cancelar" e a ação principal. Um ``ValidationError`` do domínio
+    destaca o campo correspondente (borda vermelha) e leva o foco até ele.
+    """
+
+    def __init__(
+        self,
+        title: str,
+        parent: QWidget | None = None,
+        *,
+        subtitle: str = "",
+        save_text: str = "Salvar",
+        width: int = 560,
+    ) -> None:
         super().__init__(parent)
+        self.setObjectName("formDialog")
         self.setWindowTitle(title)
         self.setModal(True)
-        self.setMinimumWidth(460)
-        self.form = QFormLayout()
-        self.form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
+        self.setMinimumWidth(width)
+        self._fields: dict[str, QWidget] = {}
+
+        header = QFrame()
+        header.setObjectName("dialogHeader")
+        header_layout = QVBoxLayout(header)
+        header_layout.setContentsMargins(24, 18, 24, 14)
+        header_layout.setSpacing(2)
+        header_layout.addWidget(plain_label(title, "dialogTitle"))
+        if subtitle:
+            header_layout.addWidget(plain_label(subtitle, "muted"))
+
+        self.body = QVBoxLayout()
+        self.body.setContentsMargins(24, 16, 24, 8)
+        self.body.setSpacing(12)
         self.error = plain_label("", "error")
-        self.buttons = QDialogButtonBox()
-        self.save_button = self.buttons.addButton("Salvar", QDialogButtonBox.ButtonRole.AcceptRole)
+        self.body_end = QVBoxLayout()
+        self.body_end.setContentsMargins(24, 0, 24, 12)
+        self.body_end.addWidget(self.error)
+
+        footer = QFrame()
+        footer.setObjectName("dialogFooter")
+        footer_layout = QHBoxLayout(footer)
+        footer_layout.setContentsMargins(24, 12, 24, 12)
+        footer_layout.addStretch(1)
+        self.cancel_button = QPushButton("Cancelar")
+        self.save_button = QPushButton(save_text)
         self.save_button.setObjectName("primary")
-        self.buttons.addButton("Cancelar", QDialogButtonBox.ButtonRole.RejectRole)
-        self.buttons.accepted.connect(self._on_save)
-        self.buttons.rejected.connect(self.reject)
+        self.save_button.setDefault(True)
+        footer_layout.addWidget(self.cancel_button)
+        footer_layout.addWidget(self.save_button)
+        self.cancel_button.clicked.connect(self.reject)
+        self.save_button.clicked.connect(self._on_save)
+
         layout = QVBoxLayout(self)
-        layout.addLayout(self.form)
-        layout.addWidget(self.error)
-        layout.addWidget(self.buttons)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        layout.addWidget(header)
+        layout.addLayout(self.body)
+        layout.addStretch(1)
+        layout.addLayout(self.body_end)
+        layout.addWidget(footer)
         self.result_value: Any = None
         self._save_handler: Callable[[], Any] | None = None
 
+    # ------------------------------------------------------------------ montagem
+    def add_banner(self, text: str) -> QFrame:
+        banner = QFrame()
+        banner.setObjectName("infoBanner")
+        banner_layout = QHBoxLayout(banner)
+        banner_layout.setContentsMargins(12, 9, 12, 9)
+        banner_layout.addWidget(plain_label(text, "bannerText"))
+        self.body.addWidget(banner)
+        return banner
+
+    def add_section(self, title: str) -> QLabel:
+        label = plain_label(title, "sectionTitle")
+        self.body.addWidget(label)
+        return label
+
+    def add_row(self, *fields: Field) -> QWidget:
+        row = QWidget()
+        layout = QHBoxLayout(row)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(12)
+        for item in fields:
+            column = QVBoxLayout()
+            column.setSpacing(4)
+            caption = plain_label(item.label + (" *" if item.required else ""), "fieldLabel")
+            caption.setBuddy(item.widget)
+            column.addWidget(caption)
+            column.addWidget(item.widget)
+            layout.addLayout(column, item.stretch)
+            if item.name:
+                self._fields[item.name] = item.widget
+        self.body.addWidget(row)
+        return row
+
+    def add_widget(self, widget: QWidget) -> None:
+        self.body.addWidget(widget)
+
+    # ------------------------------------------------------------------ salvar
     def on_save(self, save: Callable[[], Any]) -> None:
         self._save_handler = save
 
     def _on_save(self) -> None:
         if self._save_handler is None:
             raise RuntimeError("FormDialog sem ação de salvar (on_save).")
+        self._clear_invalid()
         self.error.setText("")
         try:
             self.result_value = self._save_handler()
         except (DomainError, ValueError) as error:
             self.error.setText(friendly_message(error, "form.save"))
+            if isinstance(error, ValidationError):
+                self._mark_invalid(error.field)
             return
         self.accept()
+
+    def _mark_invalid(self, field_name: str) -> None:
+        widget = self._fields.get(field_name)
+        if widget is None:
+            return
+        widget.setProperty("invalid", True)
+        _repolish(widget)
+        widget.setFocus()
+
+    def _clear_invalid(self) -> None:
+        for widget in self._fields.values():
+            if widget.property("invalid"):
+                widget.setProperty("invalid", False)
+                _repolish(widget)

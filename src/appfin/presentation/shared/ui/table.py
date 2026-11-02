@@ -11,7 +11,14 @@ from typing import Any
 
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, QPersistentModelIndex, Qt
 from PySide6.QtGui import QColor
-from PySide6.QtWidgets import QAbstractItemView, QHeaderView, QTableView, QWidget
+from PySide6.QtWidgets import (
+    QAbstractItemView,
+    QHeaderView,
+    QLabel,
+    QStackedWidget,
+    QTableView,
+    QWidget,
+)
 
 Index = QModelIndex | QPersistentModelIndex
 
@@ -92,7 +99,10 @@ def make_table(
     view.setAlternatingRowColors(True)
     view.verticalHeader().setVisible(False)
     view.setWordWrap(False)
+    view.verticalHeader().setDefaultSectionSize(34)
     header = view.horizontalHeader()
+    header.setDefaultAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+    header.setHighlightSections(False)
     for index, column in enumerate(columns):
         mode = (
             QHeaderView.ResizeMode.Stretch
@@ -105,3 +115,26 @@ def make_table(
 
 def selected_rows(view: QTableView) -> list[int]:
     return sorted({index.row() for index in view.selectionModel().selectedRows()})
+
+
+class TablePanel(QStackedWidget):
+    """Tabela que mostra uma mensagem amigável quando não há linhas."""
+
+    def __init__(self, view: QTableView, model: RowsTableModel, empty_text: str) -> None:
+        super().__init__()
+        self._model = model
+        self.empty = QLabel(empty_text)
+        self.empty.setObjectName("emptyState")
+        self.empty.setTextFormat(Qt.TextFormat.PlainText)
+        self.empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.empty.setWordWrap(True)
+        self.addWidget(view)
+        self.addWidget(self.empty)
+        model.modelReset.connect(self._update)
+        self._update()
+
+    def set_empty_text(self, text: str) -> None:
+        self.empty.setText(text)
+
+    def _update(self) -> None:
+        self.setCurrentIndex(0 if self._model.rowCount() else 1)

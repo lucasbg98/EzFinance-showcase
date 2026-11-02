@@ -13,6 +13,7 @@ from appfin.domain.money import Money
 from appfin.presentation.shared.formatting import format_money
 from appfin.presentation.shared.ui.feedback import show_error
 from appfin.presentation.shared.ui.forms import (
+    Field,
     FormDialog,
     combo,
     plain_label,
@@ -20,7 +21,13 @@ from appfin.presentation.shared.ui.forms import (
     text_field,
 )
 from appfin.presentation.shared.ui.inputs import DateEdit, MoneyEdit
-from appfin.presentation.shared.ui.table import Column, RowsTableModel, make_table, selected_rows
+from appfin.presentation.shared.ui.table import (
+    Column,
+    RowsTableModel,
+    TablePanel,
+    make_table,
+    selected_rows,
+)
 from appfin.presentation.workspace import Workspace
 
 KIND_LABELS = {
@@ -34,7 +41,12 @@ KIND_LABELS = {
 
 class AccountDialog(FormDialog):
     def __init__(self, ws: Workspace, account: Account | None, parent: QWidget) -> None:
-        super().__init__("Editar conta" if account else "Nova conta", parent)
+        super().__init__(
+            "Editar conta" if account else "Nova conta",
+            parent,
+            subtitle="Onde o dinheiro do consultório fica: caixa, banco ou maquininha.",
+            save_text="Salvar conta",
+        )
         self._ws = ws
         self._account = account
         self.name = text_field(60, "Nome da conta", "Ex.: Banco do consultório")
@@ -43,17 +55,21 @@ class AccountDialog(FormDialog):
         self.opening.setAccessibleName("Saldo inicial")
         self.opening_date = DateEdit(ws.today())
         self.opening_date.setAccessibleName("Data do saldo inicial")
-        self.form.addRow("Nome:*", self.name)
-        self.form.addRow("Tipo:", self.kind)
-        self.form.addRow("Saldo inicial (R$):", self.opening)
-        self.form.addRow("Data do saldo inicial:", self.opening_date)
-        self.form.addRow(
-            "",
+        self.add_row(
+            Field("Nome", self.name, "name", required=True, stretch=3),
+            Field("Tipo", self.kind, "kind", stretch=2),
+        )
+        self.add_section("SALDO INICIAL")
+        self.add_row(
+            Field("Valor (R$)", self.opening, "opening_balance", stretch=1),
+            Field("Na data de", self.opening_date, "opening_date", stretch=1),
+        )
+        self.add_widget(
             plain_label(
-                "O saldo inicial é o valor que havia na conta antes de começar a usar o app. "
-                "Use '-' para saldo negativo.",
+                "O valor que havia na conta antes de começar a usar o app. "
+                "Tecle '-' para saldo negativo.",
                 "muted",
-            ),
+            )
         )
         if account:
             self.name.setText(account.name)
@@ -111,7 +127,7 @@ class AccountsPage(QWidget):
             )
         )
         layout.addLayout(bar)
-        layout.addWidget(self.table)
+        layout.addWidget(TablePanel(self.table, self.model, "Nenhuma conta cadastrada."))
         self.new_button.clicked.connect(lambda: self._open(None))
         self.edit_button.clicked.connect(self._edit_selected)
         self.table.doubleClicked.connect(self._edit_selected)

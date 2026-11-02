@@ -32,7 +32,7 @@ EXCLUDES = [
 a = Analysis(
     [str(ROOT / "packaging" / "entry.py")],
     pathex=[str(ROOT / "src")],
-    datas=collect_data_files("appfin", includes=["**/*.sql", "**/*.json"]),
+    datas=collect_data_files("appfin", includes=["**/*.sql", "**/*.json", "**/*.svg"]),
     hiddenimports=[],
     excludes=EXCLUDES,
     noarchive=False,
