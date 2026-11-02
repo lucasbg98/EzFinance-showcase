@@ -10,7 +10,8 @@ Ferramenta: `packaging/release.py` (sempre via `uv run python packaging/release.
 | Repositório TUF (metadados assinados + pacotes) | `APPFIN_RELEASE_HOME\repository` | Não (é publicado na hospedagem) |
 | `root.json` confiável (público) | `src/appfin/resources/tuf_root.json` | Sim — vai dentro do app |
 
-> ⚠️ **As chaves atuais são de TESTE** (sem senha). Antes da primeira instalação real no consultório:
+> ⚠️ **As chaves atuais são de TESTE** (sem senha). 🗣️ Decisão de 02/11/2026: **adiado** — gerar as
+> chaves de produção depois dos testes neste PC e antes da primeira instalação real no consultório:
 > 1. `APPFIN_RELEASE_HOME=<pasta nova> uv run python packaging/release.py keys --encrypted`
 >    (pede senha para root e targets).
 > 2. Commitar o novo `tuf_root.json`.
@@ -35,10 +36,15 @@ Ferramenta: `packaging/release.py` (sempre via `uv run python packaging/release.
   o app apenas deixa de encontrar atualizações (falha segura) até a renovação.
 - **Anual:** renovar o `root` (vence em 365 dias) com a chave root offline.
 
-## Pendência: hospedagem das atualizações
+## Hospedagem das atualizações — decidido: Supabase Storage (fase 2)
 
-O cliente precisa baixar `metadata/` e `targets/` **sem login**. Como o repositório do GitHub é
-privado, os anexos de release dele não servem. Opções (decidir antes da 1ª instalação real):
+🗣️ Decisão de 02/11/2026: os metadados e pacotes assinados ficarão num **bucket público do Supabase
+Storage**, configurado junto com a nuvem na **fase 2**. O bucket só guarda arquivos já assinados
+(nenhum dado do consultório); a segurança vem das assinaturas TUF, não do sigilo do bucket. Escrita no
+bucket só pelo mantenedor (nunca pelo app). Até lá, a atualização automática fica desligada.
+
+Opções que foram avaliadas (o cliente precisa baixar `metadata/` e `targets/` **sem login**; os anexos
+do repositório privado do GitHub não servem):
 
 | Opção | Custo | Observação |
 |---|---|---|

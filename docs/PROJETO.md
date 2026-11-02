@@ -787,3 +787,6 @@ assinatura de código.
 | **P12** | Modelo da planilha Excel (cabeçalho + 2–3 linhas **fictícias**) | Fecha a seção 8.4 |
 | ~~P16~~ | ✅ Decisões D1–D8 das skills aprovadas e aplicadas (ver `docs/ANALISE_SKILLS.md`) | — |
 | P17 | Com o contador: regime tributário (Simples/Presumido), regra de competência no parcelamento, grupos do DRE | Categorias e DRE padrão |
+| P18 | 🗣️ **Adiado:** gerar chaves de assinatura de **produção** (com senha; root offline em 2 pen drives) — ver `docs/RELEASE.md` | Obrigatório antes da 1ª instalação real |
+| P19 | 🗣️ **Decidido:** atualizações hospedadas no **Supabase Storage** (bucket público só com pacotes assinados), na fase 2 | Até lá, atualizar instalando o novo instalador |
+| P20 | Calibrar o custo do Argon2id no PC do consultório (meta ~1 s; hoje 0,26 s nesta máquina) | Força contra ataque offline |
