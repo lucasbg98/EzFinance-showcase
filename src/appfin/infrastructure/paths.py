@@ -31,6 +31,11 @@ class AppPaths:
         return self.root / "logs"
 
     @property
+    def backup_dir(self) -> Path:
+        """Backups locais (cifrados). Protegem contra erro humano, não contra perda do disco."""
+        return self.root / "backups"
+
+    @property
     def lock_file(self) -> Path:
         return self.root / "appfin.lock"
 

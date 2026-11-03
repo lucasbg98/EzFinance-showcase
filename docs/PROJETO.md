@@ -496,7 +496,7 @@ em *pre-commit* e no CI; *secret scanning* com *push protection* ligado.
 
 ### 7.9 Backups
 - **Automático:** ao fechar e a cada 24 h de uso; também antes de migração de esquema, **importação de planilha** e restauração.
-- **Retenção:** 7 diários, 4 semanais, 12 mensais.
+- **Retenção:** os 10 mais recentes + 7 diários, 4 semanais, 12 mensais (ADR-0008).
 - **Destinos:** pasta escolhida (pen drive/OneDrive) + Supabase Storage. SHA-256 registrado.
 - **Verificação:** decifra, roda `PRAGMA integrity_check` e confere as contagens logo depois de criar.
 - **Restauração:** assistente com prévia (data, contagens); faz backup do estado atual antes; exige a senha mestra ou a chave de recuperação.

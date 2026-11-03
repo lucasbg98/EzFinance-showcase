@@ -2,7 +2,7 @@
 
 Cada migração roda numa transação: ou aplica inteira (e incrementa a versão) ou nada muda.
 Antes de migrar um banco que já tem dados, o chamador **deve** fazer backup
-(``before_migrate``); a rotina de backup cifrado entra na fase 1.
+(``before_migrate``); o app usa o backup cifrado (``SqlCipherDataStore.before_migration``).
 """
 
 from __future__ import annotations

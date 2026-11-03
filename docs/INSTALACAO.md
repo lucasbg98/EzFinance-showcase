@@ -32,10 +32,17 @@ junto com a versão. Se for diferente, **não instale**.
 
 | O quê | Onde |
 |---|---|
-| Banco de dados cifrado, cofre (`vault.json`), logs | `%APPDATA%\AppFinanceiro` |
+| Banco de dados cifrado, cofre (`vault.json`), logs, backups locais | `%APPDATA%\AppFinanceiro` |
 | Cache de atualizações | `%LOCALAPPDATA%\AppFinanceiro\updates` |
 
 Desinstalar **não apaga** os dados. Nunca apague o `vault.json` sem um backup: sem ele o banco não abre.
+
+## Backup (configure no primeiro dia)
+
+Em **Backup e segurança → Escolher pasta extra…**, aponte para um pen drive ou uma pasta do
+OneDrive. O app faz backups cifrados sozinho (a cada 24 h de uso e ao fechar). A cópia que fica só
+no computador não protege se ele estragar. Para levar os dados a outro computador, veja
+`docs/RESTAURACAO.md`.
 
 ## Atualizações
 

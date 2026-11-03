@@ -125,6 +125,21 @@ def change_password(
     return VaultEnvelope(params, salt, wrapped, envelope.wrapped_dek_recovery)
 
 
+def replace_recovery_key(envelope: VaultEnvelope, dek: SecretBytes) -> tuple[VaultEnvelope, str]:
+    """Gera uma chave de recuperação nova e recifra a 2ª cópia da DEK com ela.
+
+    A chave antiga deixa de abrir **este** cofre. Backups feitos antes guardam o envelope da época,
+    então continuam abrindo com a chave antiga (ou com a senha daquela época).
+    """
+    with SecretBytes(bytearray(secrets.token_bytes(KEY_SIZE))) as recovery_raw:
+        with derive_subkey(recovery_raw, "recovery-kek") as rkek:
+            wrapped_recovery = aead.encrypt(rkek, dek.reveal(), _recovery_aad())
+        text = format_recovery_key(recovery_raw.reveal())
+    return VaultEnvelope(
+        envelope.params, envelope.salt, envelope.wrapped_dek, wrapped_recovery
+    ), text
+
+
 # ---------------------------------------------------------------------- chave de recuperação
 def format_recovery_key(raw: bytes) -> str:
     text = base64.b32encode(raw).decode("ascii").rstrip("=")
@@ -146,13 +161,24 @@ def parse_recovery_key(text: str) -> bytes:
 
 
 # ---------------------------------------------------------------------- persistência
-def save_envelope(envelope: VaultEnvelope, path: Path) -> None:
-    """Grava de forma atômica (arquivo temporário + ``os.replace``)."""
-    document = {
+def envelope_document(envelope: VaultEnvelope) -> dict[str, Any]:
+    """Representação JSON do envelope (não contém segredo em claro)."""
+    return {
         **_header(envelope.params, envelope.salt),
         "wrapped_dek": _b64(envelope.wrapped_dek),
         "wrapped_dek_recovery": _b64(envelope.wrapped_dek_recovery),
     }
+
+
+def parse_envelope_document(document: Any) -> VaultEnvelope:
+    if not isinstance(document, dict):
+        raise VaultFormatError("Arquivo do cofre corrompido.")
+    return _parse_document(document)
+
+
+def save_envelope(envelope: VaultEnvelope, path: Path) -> None:
+    """Grava de forma atômica (arquivo temporário + ``os.replace``)."""
+    document = envelope_document(envelope)
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(json.dumps(document, indent=2, sort_keys=True), encoding="utf-8")

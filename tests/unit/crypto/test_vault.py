@@ -154,3 +154,21 @@ def test_production_params_work() -> None:
 def test_fast_params_are_only_for_tests() -> None:
     assert not FAST_PARAMS.is_at_least(MINIMUM_SECURE_PARAMS)
     assert KdfParams(3, 64 * 1024 * 1024).is_at_least(MINIMUM_SECURE_PARAMS)
+
+
+def test_replace_recovery_key_invalidates_only_the_old_key() -> None:
+    from appfin.infrastructure.crypto.vault import replace_recovery_key
+
+    created = create_vault("girassol trator piano nuvem", FAST_PARAMS)
+    envelope, new_key = replace_recovery_key(created.envelope, created.dek)
+
+    assert new_key != created.recovery_key
+    with pytest.raises(InvalidCredentialError):
+        unlock_with_recovery_key(envelope, created.recovery_key, FAST_MINIMUM)
+    assert (
+        unlock_with_recovery_key(envelope, new_key, FAST_MINIMUM).reveal() == created.dek.reveal()
+    )
+    assert (
+        unlock_with_password(envelope, "girassol trator piano nuvem", FAST_MINIMUM).reveal()
+        == created.dek.reveal()
+    )

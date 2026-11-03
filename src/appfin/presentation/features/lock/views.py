@@ -67,7 +67,9 @@ def _card(*widgets: QWidget) -> QWidget:
 
 
 class SetupView(QWidget):
-    """Criação da senha mestra (primeiro uso)."""
+    """Criação da senha mestra (primeiro uso) ou restauração de um backup (outro computador)."""
+
+    restore_requested = Signal()
 
     def __init__(self, view_model: LockViewModel) -> None:
         super().__init__()
@@ -80,6 +82,7 @@ class SetupView(QWidget):
         self.message = _label("", "error")
         self.submit = QPushButton("Criar cofre")
         self.submit.setObjectName("primary")
+        self.restore = QPushButton("Já uso o app em outro computador: restaurar um backup")
 
         explanation = _label(
             "Esta senha protege todos os dados do consultório. Ela não é enviada para lugar nenhum "
@@ -100,9 +103,11 @@ class SetupView(QWidget):
                 self.confirmation,
                 self.message,
                 self.submit,
+                self.restore,
             )
         )
 
+        self.restore.clicked.connect(self.restore_requested)
         self.password.textChanged.connect(self._update_strength)
         self.submit.clicked.connect(self._on_submit)
         self.confirmation.returnPressed.connect(self._on_submit)

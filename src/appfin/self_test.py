@@ -2,8 +2,8 @@
 
 Rodado pelo script de release logo após o build: garante que o PyInstaller incluiu tudo o que o
 app precisa em produção (cripto, banco cifrado, migrações, interface, cliente de atualização, o
-``root.json`` confiável e os geradores de PDF/Excel). Retorna 0 se tudo estiver OK.
-Não toca em dados reais.
+``root.json`` confiável, os geradores de PDF/Excel e o formato de backup).
+Retorna 0 se tudo estiver OK. Não toca em dados reais.
 """
 
 from __future__ import annotations
@@ -18,6 +18,7 @@ def run_self_test() -> int:
         _check_update_client()
         _check_ui_modules()
         _check_exporters()
+        _check_backup_format()
     except Exception:  # noqa: BLE001 - qualquer falha = build inválido
         return 1
     return 0
@@ -93,3 +94,22 @@ def _check_exporters() -> None:
     table = ExportTable("Autoteste", [ExportColumn("Valor", ColumnKind.MONEY)], [[100]])
     if not to_xlsx(table).startswith(b"PK") or not to_csv(table):
         raise RuntimeError("gerador de planilha inválido")
+
+
+def _check_backup_format() -> None:
+    import io
+
+    from appfin.infrastructure.backup import stream
+    from appfin.infrastructure.crypto.secret import SecretBytes
+
+    key = SecretBytes(bytes(32))
+    with tempfile.TemporaryDirectory() as directory:
+        database = Path(directory) / "db.bin"
+        database.write_bytes(b"autoteste")
+        out = io.BytesIO()
+        stream.write_backup(out, stream.encode_header({}), {"ok": True}, database, key)
+        source = io.BytesIO(out.getvalue())
+        restored = io.BytesIO()
+        manifest = stream.read_backup(source, stream.read_header(source), key, restored)
+    if manifest != {"ok": True} or restored.getvalue() != b"autoteste":
+        raise RuntimeError("formato de backup inválido")

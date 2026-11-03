@@ -622,6 +622,30 @@ class SqlReceiptRepository(_Base):
         return replace(receipt, version=1)
 
 
+# ---------------------------------------------------------------------- preferências
+class SqlSettingsRepository:
+    """Tabela ``setting`` (chave/valor). Preferências locais: fora da fila de sincronização."""
+
+    def __init__(self, connection: Connection, now: Callable[[], datetime]) -> None:
+        self._db = connection
+        self._now = now
+
+    def get(self, key: str) -> str | None:
+        row = self._db.execute("SELECT value FROM setting WHERE key = ?", (key,)).fetchone()
+        return None if row is None else str(row[0])
+
+    def set(self, key: str, value: str | None) -> None:
+        if value is None:
+            self._db.execute("DELETE FROM setting WHERE key = ?", (key,))
+            return
+        self._db.execute(
+            "INSERT INTO setting (key, value, updated_at) VALUES (?, ?, ?) "
+            "ON CONFLICT (key) DO UPDATE SET value = excluded.value, "
+            "updated_at = excluded.updated_at",
+            (key, value, self._now().isoformat()),
+        )
+
+
 # ---------------------------------------------------------------------- unit of work
 class SqlUnitOfWork:
     """Transação explícita: ``with uow: ...; uow.commit()``. Sem commit, tudo é desfeito."""
@@ -635,6 +659,7 @@ class SqlUnitOfWork:
         self.contacts = SqlContactRepository(connection, now)
         self.transactions = SqlTransactionRepository(connection, now)
         self.receipts = SqlReceiptRepository(connection, now)
+        self.settings = SqlSettingsRepository(connection, now)
 
     def __enter__(self) -> Self:
         if self._db.in_transaction:

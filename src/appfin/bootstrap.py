@@ -6,11 +6,13 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import date
 
+from appfin.application.backup import BackupService
 from appfin.application.catalog import CatalogService
 from appfin.application.receipts import ReceiptService
 from appfin.application.reports import ReportService
 from appfin.application.session import AppSession
 from appfin.application.transactions import TransactionService
+from appfin.infrastructure.backup.engine import FileBackupEngine, complete_pending_restore
 from appfin.infrastructure.crypto.kdf import MINIMUM_SECURE_PARAMS, PRODUCTION_PARAMS, KdfParams
 from appfin.infrastructure.ids import uuid7
 from appfin.infrastructure.key_vault import FileKeyVault
@@ -21,7 +23,12 @@ from appfin.infrastructure.persistence.repositories import SqlUnitOfWork
 from appfin.infrastructure.system import LoggingEventLog, SystemClock
 from appfin.presentation.auto_lock import DEFAULT_AUTO_LOCK_MINUTES
 from appfin.presentation.shared.formatting import ValuesVisibility
-from appfin.presentation.workspace import Workspace, WorkspaceFactory
+from appfin.presentation.workspace import (
+    AppControl,
+    DetachedAppControl,
+    Workspace,
+    WorkspaceFactory,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -40,10 +47,22 @@ class AppContainer:
 
 def build_app(config: AppConfig, today: Callable[[], date] | None = None) -> AppContainer:
     """``today`` permite fixar a data nos testes; no app, é a data local do computador."""
+    # Uma restauração interrompida (ex.: queda de energia no meio da troca) termina aqui, antes de
+    # qualquer arquivo ser aberto.
+    complete_pending_restore(config.paths)
     vault = FileKeyVault(config.paths.vault_file, config.kdf_params, config.kdf_minimum)
-    store = SqlCipherDataStore(config.paths.database_file)
     clock = SystemClock()
-    session = AppSession(vault, store, clock, LoggingEventLog())
+    store = SqlCipherDataStore(config.paths.database_file)
+    engine = FileBackupEngine(
+        config.paths, lambda: store.connection, clock.now, minimum=config.kdf_minimum
+    )
+    # Backup automático antes de migrar o esquema de um banco que já tem dados (§7.9).
+    store.before_migration = lambda connection, key: engine.create_from(
+        connection, key, [config.paths.backup_dir]
+    )
+    session = AppSession(
+        vault, store, clock, LoggingEventLog(), engine, local_backup_dir=config.paths.backup_dir
+    )
 
     def local_today() -> date:
         # Data local do computador (datas de calendário), não UTC.
@@ -51,7 +70,7 @@ def build_app(config: AppConfig, today: Callable[[], date] | None = None) -> App
 
     today = today or local_today
 
-    def workspace(visibility: ValuesVisibility) -> Workspace:
+    def workspace(visibility: ValuesVisibility, app: AppControl | None = None) -> Workspace:
         """Só pode ser chamado com o app desbloqueado (a conexão do banco está aberta)."""
         connection = store.connection
 
@@ -63,8 +82,16 @@ def build_app(config: AppConfig, today: Callable[[], date] | None = None) -> App
             transactions=TransactionService(uow, uuid7, today),
             reports=ReportService(lambda: SqlReportQueries(connection), today),
             receipts=ReceiptService(uow, uuid7, today),
+            backups=BackupService(
+                session.create_backup,
+                session.prepare_restore,
+                uow,
+                config.paths.backup_dir,
+                clock.now,
+            ),
             visibility=visibility,
             today=today,
+            app=app or DetachedAppControl(),
         )
 
     return AppContainer(session, workspace)

@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
 )
 
 from appfin.presentation.features.accounts.view import AccountsPage
+from appfin.presentation.features.backup.view import BackupPage
 from appfin.presentation.features.categories.view import CategoriesPage
 from appfin.presentation.features.company.view import CompanyForm
 from appfin.presentation.features.contacts.view import ContactsPage
@@ -55,6 +56,7 @@ SECTIONS: list[tuple[str, str, PageFactory]] = [
     ("categories", "Categorias", CategoriesPage),
     ("accounts", "Contas", AccountsPage),
     ("company", "Dados do consultório", CompanyForm),
+    ("backup", "Backup e segurança", BackupPage),
 ]
 
 

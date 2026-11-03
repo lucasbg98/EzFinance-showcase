@@ -4,6 +4,23 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 
 ## [Não lançado]
 
+## [0.6.0] — 03/11/2026
+
+### Adicionado (fase 1, incremento 1.6)
+- Tela **Backup e segurança**: backup agora, pasta extra (pen drive/OneDrive), status do último
+  backup, restaurar e gerar nova chave de recuperação.
+- Backups **cifrados** automáticos: a cada 24 h de uso, ao fechar, antes de restaurar e antes de
+  atualizar o esquema do banco. Cada backup é conferido logo após criado.
+- Restauração com verificação prévia (data e conteúdo), inclusive **em outro computador**, direto
+  da primeira tela ("Já uso o app em outro computador").
+- Nova chave de recuperação, que só passa a valer depois de confirmada.
+- `docs/RESTAURACAO.md` com o procedimento e o teste trimestral.
+
+### Segurança
+- Formato `.afbkp`: XChaCha20-Poly1305 em blocos (secretstream), cabeçalho autenticado, detecção
+  de adulteração e de truncamento. Nenhum dado em claro passa pelo disco.
+- Restauração em duas fases, retomável após queda de energia, sem aplicar WAL antigo.
+
 ## [0.5.0] — 03/11/2026
 
 ### Adicionado (fase 1 — incremento 1.5)
