@@ -15,6 +15,7 @@ from appfin.domain.entities import (
     Company,
     Contact,
     InstallmentGroup,
+    Receipt,
     Transaction,
 )
 
@@ -62,6 +63,12 @@ class TransactionRepository(Protocol):
     def count_by_account(self, account_id: str) -> int: ...
 
 
+class ReceiptRepository(Protocol):
+    def get_by_transaction(self, transaction_id: str) -> Receipt | None: ...
+    def next_number(self) -> int: ...
+    def add(self, receipt: Receipt) -> Receipt: ...
+
+
 class UnitOfWork(Protocol):
     # Propriedades somente leitura: permitem que a implementação exponha subtipos concretos.
     @property
@@ -74,6 +81,8 @@ class UnitOfWork(Protocol):
     def contacts(self) -> ContactRepository: ...
     @property
     def transactions(self) -> TransactionRepository: ...
+    @property
+    def receipts(self) -> ReceiptRepository: ...
 
     def __enter__(self) -> Self: ...
     def __exit__(self, *exc: object) -> None: ...

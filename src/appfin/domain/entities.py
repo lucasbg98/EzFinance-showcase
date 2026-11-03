@@ -321,3 +321,21 @@ class Transaction:
 
     def mark_pending(self) -> Transaction:
         return replace(self, status=TransactionStatus.PENDING, paid_date=None)
+
+
+# ---------------------------------------------------------------------- recibo
+@dataclass(frozen=True, slots=True)
+class Receipt:
+    """Recibo interno numerado (comprovante complementar; não substitui a NFS-e)."""
+
+    id: str
+    number: int
+    transaction_id: str
+    issued_on: date
+    version: int = 0
+
+    def __post_init__(self) -> None:
+        _require_id(self.id, allow_new=True)
+        _require_id(self.transaction_id, "transaction_id")
+        if self.number < 1:
+            raise ValidationError("number", "Número de recibo inválido.")

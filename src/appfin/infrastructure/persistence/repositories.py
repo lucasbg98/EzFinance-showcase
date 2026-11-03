@@ -19,6 +19,7 @@ from appfin.domain.entities import (
     Company,
     Contact,
     InstallmentGroup,
+    Receipt,
     Transaction,
 )
 from appfin.domain.enums import (
@@ -582,6 +583,45 @@ class SqlTransactionRepository(_Base):
         return int(row[0])
 
 
+# ---------------------------------------------------------------------- recibo
+class SqlReceiptRepository(_Base):
+    _table = "receipt"
+    _entity = "receipt"
+
+    def get_by_transaction(self, transaction_id: str) -> Receipt | None:
+        row = self._db.execute(
+            "SELECT id, number, transaction_id, issued_on, version FROM receipt "
+            "WHERE transaction_id = ?",
+            (transaction_id,),
+        ).fetchone()
+        if row is None:
+            return None
+        return Receipt(row[0], row[1], row[2], _required_date(row[3]), row[4])
+
+    def next_number(self) -> int:
+        # Chamado dentro da unit of work (BEGIN IMMEDIATE): sem corrida entre duas emissões.
+        row = self._db.execute("SELECT COALESCE(MAX(number), 0) + 1 FROM receipt").fetchone()
+        return int(row[0])
+
+    def add(self, receipt: Receipt) -> Receipt:
+        self._require_saved_id(receipt.id)
+        now = self._timestamp()
+        self._db.execute(
+            "INSERT INTO receipt (id, number, transaction_id, issued_on, version, created_at, "
+            "updated_at) VALUES (?, ?, ?, ?, 1, ?, ?)",
+            (
+                receipt.id,
+                receipt.number,
+                receipt.transaction_id,
+                receipt.issued_on.isoformat(),
+                now,
+                now,
+            ),
+        )
+        self._enqueue(receipt.id)
+        return replace(receipt, version=1)
+
+
 # ---------------------------------------------------------------------- unit of work
 class SqlUnitOfWork:
     """Transação explícita: ``with uow: ...; uow.commit()``. Sem commit, tudo é desfeito."""
@@ -594,6 +634,7 @@ class SqlUnitOfWork:
         self.categories = SqlCategoryRepository(connection, now)
         self.contacts = SqlContactRepository(connection, now)
         self.transactions = SqlTransactionRepository(connection, now)
+        self.receipts = SqlReceiptRepository(connection, now)
 
     def __enter__(self) -> Self:
         if self._db.in_transaction:

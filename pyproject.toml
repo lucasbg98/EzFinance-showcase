@@ -1,6 +1,6 @@
 [project]
 name = "appfin"
-version = "0.4.0"
+version = "0.5.0"
 description = "Gestão financeira do consultório odontológico — app desktop seguro (local-first, cifrado)."
 readme = "README.md"
 requires-python = ">=3.13,<3.14"
@@ -14,6 +14,8 @@ dependencies = [
     "sqlcipher3==0.6.4",           # SQLite cifrado (SQLCipher 4.x)
     "zxcvbn==4.5.0",               # medidor de força da senha mestra
     "tufup==0.10.0",               # atualizações assinadas (TUF)
+    "reportlab==5.0.1",            # recibo em PDF
+    "openpyxl==3.1.5",             # exportação (e importação, 1.7) de planilhas Excel
 ]
 
 [project.scripts]
@@ -84,7 +86,7 @@ packages = ["appfin"]
 warn_unreachable = true
 
 [[tool.mypy.overrides]]
-module = ["sqlcipher3.*", "zxcvbn.*", "nacl.*", "tufup.*"]
+module = ["sqlcipher3.*", "zxcvbn.*", "nacl.*", "tufup.*", "reportlab.*", "openpyxl.*"]
 ignore_missing_imports = true
 
 # ---------------------------------------------------------------- pytest

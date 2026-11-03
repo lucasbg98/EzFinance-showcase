@@ -5,12 +5,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 
-from PySide6.QtWidgets import QHBoxLayout, QTabWidget, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QHBoxLayout, QPushButton, QTabWidget, QVBoxLayout, QWidget
 
+from appfin.application.export_table import Cell, ColumnKind, ExportColumn, ExportTable
 from appfin.application.read_models import CategoryTotal, TransactionFilter, TransactionRow
+from appfin.br_format import format_percent_tenths, percent_tenths
 from appfin.domain.enums import ReportBasis, TransactionKind, TransactionStatus
 from appfin.domain.income_statement import LineType, StatementLine
 from appfin.presentation.shared.formatting import format_date, format_money
+from appfin.presentation.shared.ui.export_flow import export_table
 from appfin.presentation.shared.ui.forms import ValueCombo, combo, plain_label
 from appfin.presentation.shared.ui.period import PeriodPicker
 from appfin.presentation.shared.ui.table import Column, RowsTableModel, TablePanel, make_table
@@ -27,15 +30,8 @@ BASIS_HELP = {
 
 
 def percent_text(part: int, whole: int) -> str:
-    """Percentual com uma casa, só com inteiros: 1234/10000 → "12,3%".
-
-    Arredonda sobre o valor absoluto (a divisão inteira do Python arredonda negativos para baixo).
-    """
-    if whole == 0:
-        return ""
-    tenths = (abs(part) * 1000 + abs(whole) // 2) // abs(whole)
-    negative = (part < 0) != (whole < 0) and tenths != 0
-    return f"{'-' if negative else ''}{tenths // 10},{tenths % 10}%"
+    """Percentual com uma casa, só com inteiros: 1234/10000 → "12,3%"."""
+    return format_percent_tenths(percent_tenths(part, whole))
 
 
 def _basis_box() -> ValueCombo:
@@ -81,14 +77,38 @@ class IncomeStatementTab(QWidget):
         bar.addStretch(1)
         bar.addWidget(plain_label("Regime:", "muted", wrap=False))
         bar.addWidget(self.basis)
+        self.export_button = QPushButton("Exportar")
+        bar.addWidget(self.export_button)
         layout = QVBoxLayout(self)
         layout.addLayout(bar)
         layout.addWidget(self.help)
         layout.addWidget(self.table, 1)
         self.period.changed.connect(self.reload)
         self.basis.currentIndexChanged.connect(lambda _i: self.reload())
+        self.export_button.clicked.connect(self.export)
         ws.visibility.changed.connect(lambda _h: self.model.refresh())
         self.reload()
+
+    def export(self) -> None:
+        basis = self.basis.value()
+        table = ExportTable(
+            "DRE",
+            [
+                ExportColumn("Linha"),
+                ExportColumn("Valor", ColumnKind.MONEY),
+                ExportColumn("% da receita bruta", ColumnKind.PERCENT),
+            ],
+            [
+                [line.label, line.amount.cents, percent_tenths(line.amount.cents, self._gross)]
+                for line in self.model.rows()
+            ],
+        )
+        start, _end = self.period.range()
+        export_table(
+            self,
+            table,
+            f"DRE {start:%Y-%m} {'caixa' if basis is ReportBasis.CASH else 'competencia'}",
+        )
 
     @staticmethod
     def _color(line: StatementLine) -> str | None:
@@ -111,7 +131,7 @@ class CategoryLine:
     label: str
     count: int | None
     cents: int
-    share: str
+    share_tenths: int | None
     style: str  # "header" | "item" | "total" | "result"
 
 
@@ -124,7 +144,7 @@ def build_category_lines(
         items = [t for t in totals if t.kind is kind]
         total = sum(t.total_cents for t in items)
         sums[kind] = total
-        lines.append(CategoryLine(kind_names[kind], None, 0, "", "header"))
+        lines.append(CategoryLine(kind_names[kind], None, 0, None, "header"))
         for item in items:
             name = item.category_name or "(sem categoria)"
             label = f"{item.group_name} / {name}" if item.group_name else name
@@ -133,13 +153,15 @@ def build_category_lines(
                     label,
                     item.count,
                     item.total_cents,
-                    percent_text(item.total_cents, total),
+                    percent_tenths(item.total_cents, total),
                     "item",
                 )
             )
-        lines.append(CategoryLine(f"Total de {kind_names[kind].lower()}", None, total, "", "total"))
+        lines.append(
+            CategoryLine(f"Total de {kind_names[kind].lower()}", None, total, None, "total")
+        )
     result = sums[TransactionKind.INCOME] - sums[TransactionKind.EXPENSE]
-    lines.append(CategoryLine("Resultado (receitas - despesas)", None, result, "", "result"))
+    lines.append(CategoryLine("Resultado (receitas - despesas)", None, result, None, "result"))
     return lines
 
 
@@ -161,7 +183,7 @@ class CategoryTab(QWidget):
                 if r.style == "result"
                 else None,
             ),
-            Column("% do total", lambda r: r.share, align_right=True),
+            Column("% do total", lambda r: format_percent_tenths(r.share_tenths), align_right=True),
         ]
         self.model = RowsTableModel(columns, self)
         self.table = make_table(self.model, columns)
@@ -170,6 +192,8 @@ class CategoryTab(QWidget):
         bar.addStretch(1)
         bar.addWidget(plain_label("Regime:", "muted", wrap=False))
         bar.addWidget(self.basis)
+        self.export_button = QPushButton("Exportar")
+        bar.addWidget(self.export_button)
         layout = QVBoxLayout(self)
         layout.addLayout(bar)
         layout.addWidget(self.table, 1)
@@ -177,6 +201,24 @@ class CategoryTab(QWidget):
         self.basis.currentIndexChanged.connect(lambda _i: self.reload())
         ws.visibility.changed.connect(lambda _h: self.model.refresh())
         self.reload()
+
+    def export(self) -> None:
+        rows: list[list[Cell]] = [
+            [r.label, r.count, None if r.style == "header" else r.cents, r.share_tenths]
+            for r in self.model.rows()
+        ]
+        table = ExportTable(
+            "Por categoria",
+            [
+                ExportColumn("Categoria"),
+                ExportColumn("Qtde.", ColumnKind.INTEGER),
+                ExportColumn("Total", ColumnKind.MONEY),
+                ExportColumn("% do total", ColumnKind.PERCENT),
+            ],
+            rows,
+        )
+        start, _end = self.period.range()
+        export_table(self, table, f"Categorias {start:%Y-%m}")
 
     @staticmethod
     def _label(row: CategoryLine) -> str:
@@ -225,14 +267,44 @@ class OverdueTab(QWidget):
         bar.addWidget(plain_label("Mostrar:", "muted", wrap=False))
         bar.addWidget(self.kind)
         bar.addStretch(1)
+        self.export_button = QPushButton("Exportar")
+        bar.addWidget(self.export_button)
         layout = QVBoxLayout(self)
         layout.addLayout(bar)
         layout.addWidget(self.panel, 1)
         layout.addWidget(self.total)
         self.kind.currentIndexChanged.connect(lambda _i: self.reload())
+        self.export_button.clicked.connect(self.export)
         ws.visibility.changed.connect(lambda _h: self._render_total())
         self.rows: list[TransactionRow] = []
         self.reload()
+
+    def export(self) -> None:
+        table = ExportTable(
+            "Vencidas",
+            [
+                ExportColumn("Tipo"),
+                ExportColumn("Vencimento", ColumnKind.DATE),
+                ExportColumn("Dias de atraso", ColumnKind.INTEGER),
+                ExportColumn("Descrição"),
+                ExportColumn("Contato"),
+                ExportColumn("Conta"),
+                ExportColumn("Valor", ColumnKind.MONEY),
+            ],
+            [
+                [
+                    "Receber" if r.kind is TransactionKind.INCOME else "Pagar",
+                    r.due_date,
+                    self._days_late(r),
+                    r.description,
+                    r.contact_name or "",
+                    r.account_name,
+                    r.amount_cents,
+                ]
+                for r in self.rows
+            ],
+        )
+        export_table(self, table, f"Vencidas {self._ws.today():%Y-%m-%d}")
 
     def _days_late(self, row: TransactionRow) -> int:
         return (self._ws.today() - row.due_date).days

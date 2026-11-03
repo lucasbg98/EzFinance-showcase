@@ -4,29 +4,37 @@ documentos e telefones em pt-BR. Valores passam por aqui para respeitar "Ocultar
 
 from __future__ import annotations
 
-from datetime import date
 from decimal import Decimal, InvalidOperation
 
 from PySide6.QtCore import QObject, Signal
 
+from appfin.br_format import (
+    MONTHS,
+    format_cents,
+    format_date,
+    format_document,
+    format_phone,
+    long_date,
+    month_label,
+)
 from appfin.domain.errors import InvalidAmountError, ValidationError
 from appfin.domain.money import MAX_ABS_CENTS, Money
 
 HIDDEN_AMOUNT = "R$ •••••"
-MONTHS = (
-    "Janeiro",
-    "Fevereiro",
-    "Março",
-    "Abril",
-    "Maio",
-    "Junho",
-    "Julho",
-    "Agosto",
-    "Setembro",
-    "Outubro",
-    "Novembro",
-    "Dezembro",
-)
+
+__all__ = [
+    "HIDDEN_AMOUNT",
+    "MONTHS",
+    "ValuesVisibility",
+    "format_cents",
+    "format_date",
+    "format_document",
+    "format_money",
+    "format_phone",
+    "long_date",
+    "month_label",
+    "parse_money",
+]
 
 
 class ValuesVisibility(QObject):
@@ -46,15 +54,6 @@ class ValuesVisibility(QObject):
         if hidden != self._hidden:
             self._hidden = hidden
             self.changed.emit(hidden)
-
-
-def format_cents(cents: int, *, with_symbol: bool = True) -> str:
-    """12345678 → "R$ 123.456,78"; negativos com sinal antes do símbolo."""
-    sign = "-" if cents < 0 else ""
-    units, rest = divmod(abs(cents), 100)
-    integer = f"{units:,}".replace(",", ".")
-    body = f"{integer},{rest:02d}"
-    return f"{sign}R$ {body}" if with_symbol else f"{sign}{body}"
 
 
 def format_money(cents: int, visibility: ValuesVisibility | None = None) -> str:
@@ -86,27 +85,3 @@ def parse_money(text: str, *, allow_negative: bool = False) -> int:
     if abs(cents) > MAX_ABS_CENTS:
         raise ValidationError("amount", "Valor acima do limite.")
     return cents
-
-
-def format_date(value: date | None) -> str:
-    return value.strftime("%d/%m/%Y") if value else ""
-
-
-def month_label(year: int, month: int) -> str:
-    return f"{MONTHS[month - 1]} de {year}"
-
-
-def format_document(digits: str) -> str:
-    if len(digits) == 11:
-        return f"{digits[:3]}.{digits[3:6]}.{digits[6:9]}-{digits[9:]}"
-    if len(digits) == 14:
-        return f"{digits[:2]}.{digits[2:5]}.{digits[5:8]}/{digits[8:12]}-{digits[12:]}"
-    return digits
-
-
-def format_phone(digits: str) -> str:
-    if len(digits) == 11:
-        return f"({digits[:2]}) {digits[2:7]}-{digits[7:]}"
-    if len(digits) == 10:
-        return f"({digits[:2]}) {digits[2:6]}-{digits[6:]}"
-    return digits

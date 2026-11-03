@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from datetime import date
 
 from appfin.application.catalog import CatalogService
+from appfin.application.receipts import ReceiptService
 from appfin.application.reports import ReportService
 from appfin.application.session import AppSession
 from appfin.application.transactions import TransactionService
@@ -61,6 +62,7 @@ def build_app(config: AppConfig, today: Callable[[], date] | None = None) -> App
             catalog=CatalogService(uow, uuid7),
             transactions=TransactionService(uow, uuid7, today),
             reports=ReportService(lambda: SqlReportQueries(connection), today),
+            receipts=ReceiptService(uow, uuid7, today),
             visibility=visibility,
             today=today,
         )

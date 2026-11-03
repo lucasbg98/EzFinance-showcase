@@ -4,6 +4,19 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 
 ## [Não lançado]
 
+## [0.5.0] — 03/11/2026
+
+### Adicionado (fase 1 — incremento 1.5)
+- Recibo em PDF numerado (botão "Emitir recibo" em Contas a receber/pagar): valor por extenso,
+  dados do consultório, assinatura e CRO; reemissão gera 2ª via com o mesmo número.
+- Exportar para Excel (.xlsx) ou CSV: lista do mês em Contas a receber/pagar e as três abas de
+  Relatórios (DRE, por categoria, vencidas).
+
+### Segurança
+- Aviso de que o arquivo exportado sai sem a criptografia do app.
+- Proteção contra injeção de fórmula no CSV e no Excel; PDF só com texto simples.
+- Autoteste do executável passa a gerar um recibo e uma planilha.
+
 ## [0.4.0] — 03/11/2026
 
 ### Adicionado (fase 1 — incremento 1.4)

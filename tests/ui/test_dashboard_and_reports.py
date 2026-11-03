@@ -98,8 +98,8 @@ def test_category_lines_totals_and_shares() -> None:
     lines = build_category_lines(totals, names)
 
     by_label = {line.label: line for line in lines}
-    assert by_label["Receitas / Tratamentos"].share == "75,0%"
-    assert by_label["(sem categoria)"].share == "100,0%"
+    assert by_label["Receitas / Tratamentos"].share_tenths == 750
+    assert by_label["(sem categoria)"].share_tenths == 1000
     assert by_label["Total de receitas"].cents == 100_000
     assert by_label["Resultado (receitas - despesas)"].cents == 60_000
 

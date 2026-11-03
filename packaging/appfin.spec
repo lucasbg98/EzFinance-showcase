@@ -26,6 +26,7 @@ EXCLUDES = [
     "PySide6.QtXml",
     "PySide6.QtHelp",
     "PySide6.QtOpenGLWidgets",
+    # Não excluir "PIL": o reportlab 5 importa o Pillow ao inicializar (o autoteste pegou).
     # Não excluir "tufup.repo": o tufup/__init__.py o importa (quebraria as atualizações).
 ]
 

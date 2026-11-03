@@ -8,12 +8,15 @@ from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QPushButton, QVBoxLayout, QWidget
 
+from appfin.application.export_table import Cell, ColumnKind, ExportColumn, ExportTable
 from appfin.application.read_models import TransactionRow
 from appfin.domain.enums import TransactionKind, TransactionStatus
+from appfin.infrastructure.exporters.receipt_pdf import receipt_number, render_receipt
 from appfin.presentation.features.transactions.dialog import SettleDialog, TransactionDialog
 from appfin.presentation.features.transactions.labels import (
     PAYMENT_LABELS,
     TEXTS,
+    KindTexts,
     installment_text,
     status_color,
     status_text,
@@ -24,6 +27,7 @@ from appfin.presentation.features.transactions.view_model import (
 )
 from appfin.presentation.shared.formatting import format_date, format_money
 from appfin.presentation.shared.ui.cards import StatCard
+from appfin.presentation.shared.ui.export_flow import export_table, save_pdf
 from appfin.presentation.shared.ui.feedback import confirm, show_error, show_info
 from appfin.presentation.shared.ui.forms import combo, plain_label, search_field
 from appfin.presentation.shared.ui.inputs import MonthNavigator
@@ -75,6 +79,10 @@ class TransactionsPage(QWidget):
         self.settle_button = QPushButton(texts.settle_button)
         self.reopen_button = QPushButton("Desfazer baixa")
         self.reopen_button.setToolTip("Volta os selecionados para pendente")
+        self.receipt_button = QPushButton("Emitir recibo")
+        self.receipt_button.setToolTip("Recibo em PDF do lançamento selecionado (já pago)")
+        self.export_button = QPushButton("Exportar")
+        self.export_button.setToolTip("Salvar a lista do mês em Excel ou CSV")
         self.search = search_field("Buscar descrição, documento ou contato", "Buscar")
         self.search.setMinimumWidth(360)
         actions = QHBoxLayout()
@@ -84,6 +92,8 @@ class TransactionsPage(QWidget):
             self.delete_button,
             self.settle_button,
             self.reopen_button,
+            self.receipt_button,
+            self.export_button,
         ):
             actions.addWidget(button)
         actions.addStretch(1)
@@ -143,6 +153,8 @@ class TransactionsPage(QWidget):
         self.delete_button.clicked.connect(self.delete_selected)
         self.settle_button.clicked.connect(self.settle_selected)
         self.reopen_button.clicked.connect(self.reopen_selected)
+        self.receipt_button.clicked.connect(self.issue_receipt)
+        self.export_button.clicked.connect(self.export)
         self.month.changed.connect(self.vm.set_month)
         self.account.currentIndexChanged.connect(self._on_account)
         self.status.currentIndexChanged.connect(lambda _i: self.vm.set_status(self.status.value()))
@@ -264,12 +276,79 @@ class TransactionsPage(QWidget):
         if confirm(self, f"Voltar {len(rows)} lançamento(s) para pendente?", accept="Desfazer"):
             self._run(lambda: self.vm.reopen([r.id for r in rows]), "transaction.reopen")
 
+    def issue_receipt(self) -> None:
+        rows = self._selected()
+        if len(rows) != 1:
+            show_info(self, "Selecione um único lançamento para emitir o recibo.")
+            return
+        try:
+            data = self._ws.receipts.issue(rows[0].id)
+            pdf = render_receipt(data)
+        except Exception as error:  # noqa: BLE001 - mensagem amigável + log sem dados
+            show_error(self, error, "receipt.issue")
+            return
+        save_pdf(self, pdf, f"Recibo-{receipt_number(data.receipt.number)}.pdf", open_after=True)
+
+    def export(self) -> None:
+        name = f"{self.texts.title} {self.vm.year}-{self.vm.month:02d}"
+        export_table(self, transactions_table(self.vm.rows, self.texts), name)
+
     def _run(self, action: Callable[[], object], event: str) -> None:
         try:
             action()
         except Exception as error:  # noqa: BLE001 - mensagem amigável + log sem dados
             show_error(self, error, event)
             self.vm.reload()
+
+
+def transactions_table(rows: list[TransactionRow], texts: KindTexts) -> ExportTable:
+    """Lista do mês para Excel/CSV, com os valores reais (independe de "Ocultar valores")."""
+    columns = [
+        ExportColumn("Vencimento", ColumnKind.DATE),
+        ExportColumn("Descrição"),
+        ExportColumn(texts.contact_label),
+        ExportColumn("Categoria"),
+        ExportColumn("Conta"),
+        ExportColumn("Parcela"),
+        ExportColumn("Forma de pagamento"),
+        ExportColumn("Valor", ColumnKind.MONEY),
+        ExportColumn("Situação"),
+        ExportColumn("Data do pagamento", ColumnKind.DATE),
+        ExportColumn("Competência", ColumnKind.DATE),
+        ExportColumn("Documento"),
+    ]
+    data: list[list[Cell]] = [
+        [
+            r.due_date,
+            r.description,
+            r.contact_name or "",
+            r.category_name or "",
+            r.account_name,
+            installment_text(r),
+            PAYMENT_LABELS.get(r.payment_method, "") if r.payment_method else "",
+            r.amount_cents,
+            status_text(r, texts),
+            r.paid_date,
+            r.accrual_date,
+            r.document_number,
+        ]
+        for r in rows
+    ]
+    total: list[Cell] = [
+        "",
+        "TOTAL",
+        "",
+        "",
+        "",
+        "",
+        "",
+        sum(r.amount_cents for r in rows),
+        "",
+        None,
+        None,
+        "",
+    ]
+    return ExportTable(texts.title, columns, [*data, total] if rows else data)
 
 
 def receivables_page(ws: Workspace) -> TransactionsPage:
