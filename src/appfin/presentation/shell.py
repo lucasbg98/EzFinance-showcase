@@ -22,6 +22,7 @@ from appfin.presentation.features.accounts.view import AccountsPage
 from appfin.presentation.features.categories.view import CategoriesPage
 from appfin.presentation.features.company.view import CompanyForm
 from appfin.presentation.features.contacts.view import ContactsPage
+from appfin.presentation.features.transactions.view import payables_page, receivables_page
 from appfin.presentation.shared.ui.forms import plain_label
 from appfin.presentation.workspace import Workspace
 
@@ -45,8 +46,8 @@ def _soon(title: str, increment: str) -> PageFactory:
 
 SECTIONS: list[tuple[str, str, PageFactory]] = [
     ("dashboard", "Início", _soon("Início", "1.4")),
-    ("receivables", "Contas a receber", _soon("Contas a receber", "1.3")),
-    ("payables", "Contas a pagar", _soon("Contas a pagar", "1.3")),
+    ("receivables", "Contas a receber", receivables_page),
+    ("payables", "Contas a pagar", payables_page),
     ("reports", "Relatórios e DRE", _soon("Relatórios e DRE", "1.4")),
     ("contacts", "Contatos", ContactsPage),
     ("categories", "Categorias", CategoriesPage),

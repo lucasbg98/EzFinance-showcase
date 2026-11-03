@@ -4,6 +4,20 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 
 ## [Não lançado]
 
+## [0.3.0] — 03/11/2026
+
+### Adicionado (fase 1 — incremento 1.3)
+- Contas a receber e Contas a pagar: lista mensal com filtros (conta, situação, busca), resumo do
+  mês em cartões, seleção múltipla e atalhos (Ctrl+N, Delete, Enter).
+- Formulário de lançamento com parcelamento (meses ou dias) e prévia das parcelas, competência,
+  "já recebido/pago", contato com busca e cadastro rápido, categoria filtrada por tipo, conta, forma
+  de pagamento e nº do documento.
+- Receber/pagar em lote (data e conta), desfazer baixa e excluir com confirmação.
+
+### Corrigido
+- Modais altos cortavam campos (corpo agora rola e se ajusta ao conteúdo).
+- Campos numéricos com o número invisível; editores internos de combos herdando borda.
+
 ## [0.2.2] — 02/11/2026
 
 ### Alterado

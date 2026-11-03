@@ -161,6 +161,26 @@ def build_stylesheet() -> str:
     }}
     QPushButton#ghost:hover {{ border-color: {t["primary"]}; }}
     QLabel#emptyState {{ color: {t["text_muted"]}; font-size: 11pt; }}
+    QFrame#statCard {{
+        background: {t["surface"]}; border: 1px solid {t["border"]}; border-radius: 8px;
+    }}
+    QLabel#statTitle {{ color: {t["text_muted"]}; font-size: 9pt; font-weight: 600; }}
+    QLabel#statValue {{ font-size: 15pt; font-weight: 600; color: {t["text"]}; }}
+    QLabel#statValueSuccess {{ font-size: 15pt; font-weight: 600; color: {t["success"]}; }}
+    QLabel#statValueWarning {{ font-size: 15pt; font-weight: 600; color: #B54708; }}
+    QLabel#statValueDanger {{ font-size: 15pt; font-weight: 600; color: {t["danger"]}; }}
+    QFrame#separator {{ background: {t["border"]}; border: none; }}
+    QSpinBox {{
+        background: {t["surface"]}; border: 1px solid {t["border"]};
+        border-radius: {t["radius"]}; padding: 5px 8px; min-height: 22px;
+    }}
+    QSpinBox:focus {{ border: 2px solid {t["primary"]}; }}
+    /* Não combinar com setButtonSymbols(NoButtons): juntos deixam o editor com 1 px. */
+    QSpinBox::up-button, QSpinBox::down-button {{ width: 0; border: none; }}
+    QSpinBox QLineEdit, QComboBox QLineEdit, QDateEdit QLineEdit {{
+        border: none; padding: 0; margin: 0; background: transparent;
+    }}
+    QScrollArea#dialogScroll, QWidget#dialogBody {{ background: {t["surface"]}; }}
     QPushButton#link {{
         border: none; background: transparent; color: {t["primary"]}; text-decoration: underline;
         padding: 2px;

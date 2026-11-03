@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import date
 
@@ -36,15 +37,18 @@ class AppContainer:
     workspace_factory: WorkspaceFactory
 
 
-def build_app(config: AppConfig) -> AppContainer:
+def build_app(config: AppConfig, today: Callable[[], date] | None = None) -> AppContainer:
+    """``today`` permite fixar a data nos testes; no app, é a data local do computador."""
     vault = FileKeyVault(config.paths.vault_file, config.kdf_params, config.kdf_minimum)
     store = SqlCipherDataStore(config.paths.database_file)
     clock = SystemClock()
     session = AppSession(vault, store, clock, LoggingEventLog())
 
-    def today() -> date:
+    def local_today() -> date:
         # Data local do computador (datas de calendário), não UTC.
         return date.today()  # noqa: DTZ011 - data de calendário local, de propósito
+
+    today = today or local_today
 
     def workspace(visibility: ValuesVisibility) -> Workspace:
         """Só pode ser chamado com o app desbloqueado (a conexão do banco está aberta)."""

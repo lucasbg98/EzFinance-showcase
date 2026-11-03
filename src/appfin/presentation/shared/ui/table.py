@@ -79,8 +79,12 @@ class RowsTableModel(QAbstractTableModel):
     def headerData(  # noqa: N802 - API Qt
         self, section: int, orientation: Qt.Orientation, role: int = Qt.ItemDataRole.DisplayRole
     ) -> Any:
-        if role == Qt.ItemDataRole.DisplayRole and orientation == Qt.Orientation.Horizontal:
+        if orientation != Qt.Orientation.Horizontal:
+            return None
+        if role == Qt.ItemDataRole.DisplayRole:
             return self._columns[section].header
+        if role == Qt.ItemDataRole.TextAlignmentRole and self._columns[section].align_right:
+            return int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         return None
 
 

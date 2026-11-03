@@ -9,9 +9,10 @@ from dataclasses import dataclass
 from typing import Any
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QGuiApplication, QIcon, QShowEvent
 from PySide6.QtWidgets import (
     QComboBox,
+    QCompleter,
     QDialog,
     QFrame,
     QHBoxLayout,
@@ -19,6 +20,7 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QPlainTextEdit,
     QPushButton,
+    QScrollArea,
     QVBoxLayout,
     QWidget,
 )
@@ -69,7 +71,7 @@ def notes_field(max_length: int, accessible_name: str) -> QPlainTextEdit:
     field = QPlainTextEdit()
     field.setAccessibleName(accessible_name)
     field.setTabChangesFocus(True)
-    field.setFixedHeight(72)
+    field.setFixedHeight(88)  # acima do min-height do tema (64 px + bordas e padding)
 
     def enforce_limit() -> None:
         text = field.toPlainText()
@@ -98,6 +100,17 @@ class ValueCombo(QComboBox):
         self._values.append(value)
         self.addItem(label)
 
+    def set_options(self, options: Iterable[tuple[str, Any]]) -> None:
+        """Troca as opções mantendo a escolha atual quando ela ainda existir."""
+        current = self.value()
+        self.blockSignals(True)
+        self.clear()
+        self._values.clear()
+        for label, value in options:
+            self.add_option(label, value)
+        self.blockSignals(False)
+        self.select(current)
+
     def value(self) -> Any:
         index = self.currentIndex()
         return self._values[index] if 0 <= index < len(self._values) else None
@@ -112,6 +125,41 @@ class ValueCombo(QComboBox):
         index = self.index_of(value)
         if index >= 0:
             self.setCurrentIndex(index)
+
+
+class SearchCombo(ValueCombo):
+    """Combo com busca por trecho do texto (ex.: digitar "silva" acha "Ana Silva").
+
+    ``checked_value`` recusa texto digitado que não corresponde a nenhuma opção, em vez de
+    gravar algo diferente do que a usuária vê.
+    """
+
+    def __init__(
+        self,
+        options: Iterable[tuple[str, Any]],
+        accessible_name: str,
+        *,
+        field_name: str,
+        not_found_message: str,
+    ) -> None:
+        super().__init__(options, accessible_name)
+        self._field_name = field_name
+        self._not_found = not_found_message
+        self.setEditable(True)
+        self.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+        completer = self.completer()
+        if completer is not None:
+            completer.setFilterMode(Qt.MatchFlag.MatchContains)
+            completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+            completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
+
+    def checked_value(self) -> Any:
+        text = self.currentText().strip()
+        index = self.findText(text, Qt.MatchFlag.MatchFixedString)
+        if index < 0:
+            raise ValidationError(self._field_name, self._not_found)
+        self.setCurrentIndex(index)
+        return self.value()
 
 
 def combo(options: Iterable[tuple[str, Any]], accessible_name: str) -> ValueCombo:
@@ -239,9 +287,20 @@ class FormDialog(FormBuilder, QDialog):
         if subtitle:
             header_layout.addWidget(plain_label(subtitle, "muted"))
 
-        self.body = QVBoxLayout()
+        # Corpo com rolagem: modais altos nunca ficam cortados (o Qt limita a altura automática
+        # de janelas a ~2/3 da tela); ao abrir, o modal se ajusta ao conteúdo (showEvent).
+        self._body_widget = QWidget()
+        self._body_widget.setObjectName("dialogBody")
+        self.body = QVBoxLayout(self._body_widget)
         self.body.setContentsMargins(24, 16, 24, 8)
         self.body.setSpacing(12)
+        self._scroll = QScrollArea()
+        self._scroll.setObjectName("dialogScroll")
+        self._scroll.setWidgetResizable(True)
+        self._scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self._scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self._scroll.setWidget(self._body_widget)
+        self._header = header
         self.error = plain_label("", "error")
         self.body_end = QVBoxLayout()
         self.body_end.setContentsMargins(24, 0, 24, 12)
@@ -265,12 +324,34 @@ class FormDialog(FormBuilder, QDialog):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
         layout.addWidget(header)
-        layout.addLayout(self.body)
-        layout.addStretch(1)
+        layout.addWidget(self._scroll, 1)
         layout.addLayout(self.body_end)
         layout.addWidget(footer)
+        self._footer = footer
+        self._fitted = False
         self.result_value: Any = None
         self._save_handler: Callable[[], Any] | None = None
+
+    # ------------------------------------------------------------------ tamanho
+    def showEvent(self, event: QShowEvent) -> None:  # noqa: N802 - API Qt
+        super().showEvent(event)
+        if not self._fitted:
+            self._fitted = True
+            self.fit_to_content()
+
+    def fit_to_content(self) -> None:
+        """Altura = conteúdo inteiro, limitada a 90% da área útil da tela (o resto rola)."""
+        self._body_widget.adjustSize()
+        needed = (
+            self._header.sizeHint().height()
+            + self._body_widget.sizeHint().height()
+            + self.body_end.sizeHint().height()
+            + self._footer.sizeHint().height()
+            + 4
+        )
+        screen = self.screen() or QGuiApplication.primaryScreen()
+        limit = int(screen.availableGeometry().height() * 0.9) if screen else needed
+        self.resize(max(self.width(), self.minimumWidth()), min(needed, limit))
 
     # ------------------------------------------------------------------ salvar
     def on_save(self, save: Callable[[], Any]) -> None:
