@@ -51,16 +51,17 @@ Cheque, Outro.
 | Grupo DRE (`dre_group`) | Categorias padrão |
 |---|---|
 | `gross_revenue` (+) Receita bruta | Tratamentos particulares, Convênios odontológicos, Outras receitas operacionais |
-| `deductions` (−) Deduções | Descontos concedidos, Glosas de convênio, Taxas de cartão/maquininha |
-| `taxes` (−) Impostos | ISS, Simples Nacional (DAS), IRPJ/CSLL (Presumido), PIS/COFINS (Presumido) |
+| `deductions` (−) Deduções | Descontos concedidos, Glosas de convênio, Devoluções a pacientes |
+| `taxes` (−) Impostos | Tributos do regime (ISS, Simples Nacional (DAS), IRPJ/CSLL/PIS/COFINS no Presumido) + Outros impostos e taxas, INSS e FGTS, Contador, CRO e anuidades, Laudos e saúde ocupacional, Tarifas bancárias, Taxas de cartão/maquininha, Controle de esterilização (segue o bloco de impostos da planilha do consultório — decisão P19) |
 | `direct_costs` (−) Custos diretos | Materiais odontológicos, Laboratório de prótese, Descartáveis e esterilização, Repasse a dentista parceiro |
-| `operating_expenses` (−) Despesas operacionais | Aluguel, Condomínio, Energia, Água, Internet/Telefone, Salários, Pró-labore, INSS/FGTS, Contador, Software, Manutenção de equipamentos, Coleta de resíduos, CRO/anuidades, Seguros |
+| `operating_expenses` (−) Despesas operacionais | Aluguel, Condomínio, Energia, Água, Internet/Telefone, Salários, Pró-labore, Software, Manutenção de equipamentos, Coleta de resíduos, Seguros |
+| `investments` (−) Investimentos | Equipamentos e aquisições, Reformas, Kits para pacientes, Cursos e capacitação, Uniformes |
 | `selling_expenses` (−) Despesas comerciais | Marketing, Redes sociais, Brindes |
-| `other_results` (±) Resultado financeiro/diversos | Rendimentos, Juros e tarifas bancárias, Outras |
+| `other_results` (±) Resultado financeiro/diversos | Rendimentos, Juros, Outras |
 
 Estrutura do DRE: Receita bruta − Deduções − Impostos = **Receita líquida** − Custos diretos =
-**Lucro bruto** − Despesas operacionais − Despesas comerciais = **Resultado operacional** ± Diversos =
-**Resultado do período**. Transferências nunca entram.
+**Lucro bruto** − Despesas operacionais − Despesas comerciais = **Resultado operacional** − Investimentos =
+**Resultado após investimentos** ± Diversos = **Resultado do período**. Transferências nunca entram.
 
 ## Regime de caixa × competência
 

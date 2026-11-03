@@ -40,6 +40,7 @@ DRE_LABELS = {
     DreGroup.DIRECT_COSTS: "Custos diretos",
     DreGroup.OPERATING_EXPENSES: "Despesas operacionais",
     DreGroup.SELLING_EXPENSES: "Despesas comerciais",
+    DreGroup.INVESTMENTS: "Investimentos",
     DreGroup.OTHER_RESULTS: "Financeiro e diversos",
 }
 

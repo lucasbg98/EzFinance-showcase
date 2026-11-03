@@ -43,3 +43,12 @@ desktop.ini
 
 # Configuração local do tufup (gerada pelo script de release)
 .tufup-repo-config
+
+# Planilhas podem conter dados reais (financeiros, nomes): nunca versionar.
+# Só planilhas SINTÉTICAS dos testes entram no repositório.
+*.csv
+*.xlsx
+*.xlsm
+*.xls
+!tests/fixtures/**/*.csv
+!tests/fixtures/**/*.xlsx

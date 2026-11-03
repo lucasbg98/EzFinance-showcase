@@ -16,6 +16,8 @@ from appfin.infrastructure.persistence.database import Connection, DatabaseError
 
 _MIGRATIONS_PACKAGE = "appfin.infrastructure.persistence.migrations"
 _FILENAME = re.compile(r"^(\d{4})_[a-z0-9_]+\.sql$")
+# Primeira linha de uma migração que reconstrói tabela referenciada por chave estrangeira.
+_FOREIGN_KEYS_OFF_MARKER = "-- appfin:foreign-keys-off"
 
 
 class MigrationError(DatabaseError):
@@ -27,6 +29,11 @@ class Migration:
     version: int
     name: str
     sql: str
+
+    @property
+    def disables_foreign_keys(self) -> bool:
+        """Reconstrução de tabela: FKs desligadas só durante o script (ver ``_apply``)."""
+        return self.sql.lstrip().startswith(_FOREIGN_KEYS_OFF_MARKER)
 
 
 def available_migrations() -> list[Migration]:
@@ -69,6 +76,9 @@ def migrate(
 
 
 def _apply(connection: Connection, migration: Migration) -> None:
+    if migration.disables_foreign_keys:
+        _apply_with_foreign_keys_off(connection, migration)
+        return
     # executescript não aceita parâmetros; o conteúdo vem de arquivos do próprio pacote.
     script = (
         f"BEGIN IMMEDIATE;\n{migration.sql}\nPRAGMA user_version = {migration.version:d};\nCOMMIT;"
@@ -76,6 +86,30 @@ def _apply(connection: Connection, migration: Migration) -> None:
     try:
         connection.executescript(script)
     except Exception as exc:
-        if connection.in_transaction:
-            connection.execute("ROLLBACK")
+        _rollback(connection)
         raise MigrationError(f"Falha na migração {migration.version:04d}.") from exc
+
+
+def _apply_with_foreign_keys_off(connection: Connection, migration: Migration) -> None:
+    """Procedimento oficial do SQLite para reconstruir tabelas referenciadas por FK.
+
+    ``PRAGMA foreign_keys`` só muda fora de transação. A integridade não é relaxada: antes do
+    commit, ``PRAGMA foreign_key_check`` precisa voltar vazio; senão, tudo é desfeito.
+    """
+    connection.execute("PRAGMA foreign_keys = OFF")
+    try:
+        connection.executescript(f"BEGIN IMMEDIATE;\n{migration.sql}")
+        if connection.execute("PRAGMA foreign_key_check").fetchall():
+            raise MigrationError("Chaves estrangeiras inválidas após a migração.")
+        connection.execute(f"PRAGMA user_version = {migration.version:d}")
+        connection.execute("COMMIT")
+    except Exception as exc:
+        _rollback(connection)
+        raise MigrationError(f"Falha na migração {migration.version:04d}.") from exc
+    finally:
+        connection.execute("PRAGMA foreign_keys = ON")
+
+
+def _rollback(connection: Connection) -> None:
+    if connection.in_transaction:
+        connection.execute("ROLLBACK")

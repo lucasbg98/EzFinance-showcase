@@ -48,6 +48,7 @@ _LABELS = {
     DreGroup.DIRECT_COSTS: "(-) Custos diretos",
     DreGroup.OPERATING_EXPENSES: "(-) Despesas operacionais",
     DreGroup.SELLING_EXPENSES: "(-) Despesas comerciais",
+    DreGroup.INVESTMENTS: "(-) Investimentos",
     DreGroup.OTHER_RESULTS: "(±) Resultado financeiro e diversos",
 }
 
@@ -63,8 +64,9 @@ def build_income_statement(totals: Mapping[DreGroup | str, GroupTotals]) -> list
     net_revenue = gross + net(DreGroup.DEDUCTIONS) + net(DreGroup.TAXES)
     gross_profit = net_revenue + net(DreGroup.DIRECT_COSTS)
     operating = gross_profit + net(DreGroup.OPERATING_EXPENSES) + net(DreGroup.SELLING_EXPENSES)
+    after_investments = operating + net(DreGroup.INVESTMENTS)
     unclassified = net(UNCLASSIFIED)
-    result = operating + net(DreGroup.OTHER_RESULTS) + unclassified
+    result = after_investments + net(DreGroup.OTHER_RESULTS) + unclassified
 
     lines = [
         line(DreGroup.GROSS_REVENUE),
@@ -76,6 +78,8 @@ def build_income_statement(totals: Mapping[DreGroup | str, GroupTotals]) -> list
         line(DreGroup.OPERATING_EXPENSES),
         line(DreGroup.SELLING_EXPENSES),
         StatementLine("(=) Resultado operacional", operating, LineType.SUBTOTAL),
+        line(DreGroup.INVESTMENTS),
+        StatementLine("(=) Resultado após investimentos", after_investments, LineType.SUBTOTAL),
         line(DreGroup.OTHER_RESULTS),
     ]
     if not unclassified.is_zero:

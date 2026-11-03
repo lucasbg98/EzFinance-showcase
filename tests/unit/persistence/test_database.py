@@ -3,7 +3,11 @@ from pathlib import Path
 import pytest
 
 from appfin.infrastructure.crypto.secret import SecretBytes
-from appfin.infrastructure.persistence.database import WrongDatabaseKeyError, open_encrypted
+from appfin.infrastructure.persistence.database import (
+    Connection,
+    WrongDatabaseKeyError,
+    open_encrypted,
+)
 from appfin.infrastructure.persistence.migrator import (
     Migration,
     MigrationError,
@@ -139,4 +143,89 @@ def test_audit_table_rejects_free_text_outcome(tmp_path: Path) -> None:
             "INSERT INTO audit_event (occurred_at, event, outcome) VALUES (?, ?, ?)",
             ("2026-01-01T00:00:00Z", "unlock", "senha era X"),
         )
+    connection.close()
+
+
+_NOW = "2026-01-01T00:00:00Z"
+
+
+def _seed_version_3(connection: Connection) -> None:
+    """Banco na versão anterior à 0004, com grupo, categoria e lançamento que a referencia."""
+    migrate(connection, available_migrations()[:3])
+    connection.execute(
+        "INSERT INTO account (id, name, kind, version, created_at, updated_at) "
+        "VALUES ('acc', 'Caixa', 'cash', 1, ?, ?)",
+        (_NOW, _NOW),
+    )
+    connection.executemany(
+        "INSERT INTO category (id, parent_id, name, kind, dre_group, version, created_at, "
+        "updated_at) VALUES (?, ?, ?, 'expense', 'operating_expenses', 1, ?, ?)",
+        [("grp", None, "Despesas", _NOW, _NOW), ("cat", "grp", "Aluguel", _NOW, _NOW)],
+    )
+    connection.execute(
+        "INSERT INTO financial_transaction (id, kind, description, amount_cents, accrual_date, "
+        "due_date, status, account_id, category_id, version, created_at, updated_at) "
+        "VALUES ('tx', 'expense', 'Aluguel', 1000, '2026-01-31', '2026-01-31', 'pending', "
+        "'acc', 'cat', 1, ?, ?)",
+        (_NOW, _NOW),
+    )
+
+
+def test_migration_0004_keeps_categories_and_references(tmp_path: Path) -> None:
+    connection = open_encrypted(tmp_path / "app.db", _dek())
+    _seed_version_3(connection)
+    before = connection.execute("SELECT * FROM category ORDER BY id").fetchall()
+
+    migrate(connection)
+
+    assert connection.execute("SELECT * FROM category ORDER BY id").fetchall() == before
+    assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
+    assert connection.execute("PRAGMA foreign_keys").fetchone()[0] == 1
+    indexes = {row[1] for row in connection.execute("PRAGMA index_list(category)")}
+    assert "idx_category_parent" in indexes
+    connection.close()
+
+
+def test_migration_0004_accepts_investments_and_still_enforces_rules(tmp_path: Path) -> None:
+    connection = open_encrypted(tmp_path / "app.db", _dek())
+    _seed_version_3(connection)
+    migrate(connection)
+    insert = (
+        "INSERT INTO category (id, name, kind, dre_group, version, created_at, updated_at) "
+        "VALUES (?, 'Cursos', 'expense', ?, 1, ?, ?)"
+    )
+
+    connection.execute(insert, ("inv", "investments", _NOW, _NOW))
+
+    with pytest.raises(Exception, match="CHECK"):
+        connection.execute(insert, ("bad", "lucro_magico", _NOW, _NOW))
+    with pytest.raises(Exception, match="FOREIGN KEY"):
+        connection.execute("DELETE FROM category WHERE id = 'cat'")
+    connection.close()
+
+
+def test_foreign_keys_off_migration_with_broken_reference_rolls_back(tmp_path: Path) -> None:
+    connection = open_encrypted(tmp_path / "app.db", _dek())
+    base = [
+        Migration(1, "0001_a.sql", "CREATE TABLE p (id TEXT PRIMARY KEY) STRICT;"),
+    ]
+    broken = [
+        *base,
+        Migration(
+            2,
+            "0002_b.sql",
+            "-- appfin:foreign-keys-off\n"
+            "CREATE TABLE c (p_id TEXT REFERENCES p (id)) STRICT;\n"
+            "INSERT INTO c VALUES ('inexistente');",
+        ),
+    ]
+    migrate(connection, base)
+
+    with pytest.raises(MigrationError):
+        migrate(connection, broken)
+
+    tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master")}
+    assert "c" not in tables
+    assert current_version(connection) == 1
+    assert connection.execute("PRAGMA foreign_keys").fetchone()[0] == 1
     connection.close()

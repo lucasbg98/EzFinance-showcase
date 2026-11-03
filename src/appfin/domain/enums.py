@@ -40,6 +40,7 @@ class DreGroup(StrEnum):
     DIRECT_COSTS = "direct_costs"
     OPERATING_EXPENSES = "operating_expenses"
     SELLING_EXPENSES = "selling_expenses"
+    INVESTMENTS = "investments"
     OTHER_RESULTS = "other_results"
 
 

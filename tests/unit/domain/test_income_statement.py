@@ -59,3 +59,26 @@ def test_result_equals_all_inflows_minus_all_outflows() -> None:
     lines = build_income_statement(totals)
 
     assert lines[-1].amount.cents == expected
+
+
+def test_investments_come_after_operating_result_and_before_other_results() -> None:
+    lines = build_income_statement(
+        {
+            DreGroup.GROSS_REVENUE: GroupTotals(inflow_cents=100_000),
+            DreGroup.OPERATING_EXPENSES: GroupTotals(outflow_cents=30_000),
+            DreGroup.INVESTMENTS: GroupTotals(outflow_cents=20_000),
+            DreGroup.OTHER_RESULTS: GroupTotals(inflow_cents=1_000),
+        }
+    )
+    labels = [line.label for line in lines]
+    amounts = _amounts(lines)
+
+    assert labels.index("(=) Resultado operacional") < labels.index("(-) Investimentos")
+    assert labels.index("(-) Investimentos") < labels.index("(=) Resultado após investimentos")
+    assert labels.index("(=) Resultado após investimentos") < labels.index(
+        "(±) Resultado financeiro e diversos"
+    )
+    assert amounts["(=) Resultado operacional"] == 70_000
+    assert amounts["(-) Investimentos"] == -20_000
+    assert amounts["(=) Resultado após investimentos"] == 50_000
+    assert amounts["(=) Resultado do período"] == 51_000

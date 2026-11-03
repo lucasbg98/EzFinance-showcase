@@ -379,13 +379,19 @@ relatórios de receita/despesa.
 | Grupo DRE | Categorias de exemplo |
 |---|---|
 | (+) Receita bruta | Tratamentos particulares, Convênios odontológicos, Outras receitas operacionais |
-| (−) Deduções | Descontos concedidos, Glosas de convênio, Taxas de cartão/maquininha |
-| (−) Impostos | ISS, Simples Nacional / DAS, Carnê-leão (PF), IRPJ/CSLL (Presumido) |
+| (−) Deduções | Descontos concedidos, Glosas de convênio, Devoluções a pacientes |
+| (−) Impostos | Tributos do regime (ex.: Simples Nacional / DAS, ISS), Outros impostos e taxas, INSS e FGTS, Contador, CRO e anuidades, Laudos e saúde ocupacional, Tarifas bancárias, Taxas de cartão/maquininha, Controle de esterilização |
 | (−) Custos diretos (no lugar de "CMV") | Materiais odontológicos, Laboratório de prótese, Descartáveis e esterilização, Dentista parceiro / repasse |
-| (−) Despesas operacionais (fixas) | Aluguel, Condomínio, Energia, Água, Internet/Telefone, Salários, Pró-labore, INSS/FGTS, Contador, Software, Manutenção de equipamentos, Coleta de resíduos, CRO / anuidades, Seguros |
+| (−) Despesas operacionais | Aluguel, Condomínio, Energia, Água, Internet/Telefone, Salários, Pró-labore, Software, Manutenção de equipamentos, Coleta de resíduos, Seguros |
 | (−) Despesas comerciais | Marketing, Redes sociais, Brindes |
-| (±) Resultado financeiro / diversos | Rendimentos, Juros e tarifas bancárias, Outras |
+| (−) Investimentos (v0.7) | Equipamentos e aquisições, Reformas, Kits para pacientes, Cursos e capacitação, Uniformes |
+| (±) Resultado financeiro / diversos | Rendimentos, Juros, Outras |
 | (=) Resultado do período | — |
+
+🗣️ **DRE gerencial (P19, plano de importação):** o grupo "Impostos" segue o bloco de impostos da
+planilha do consultório (inclui encargos, contador, tarifas e maquininha), e o grupo "Investimentos" fica
+entre o "Resultado operacional" e o "Resultado financeiro" (subtotal "Resultado após investimentos").
+O grupo de cada categoria pode ser trocado na tela Categorias. 🔶 Validar com o contador.
 
 **Regime do DRE (🗣️ P13):** a tela do DRE (e o relatório por categoria) tem um **seletor "Caixa | Competência"**
 na hora de visualizar:

@@ -4,6 +4,17 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 
 ## [Não lançado]
 
+### Adicionado (fase 1, incremento 1.7.1)
+- DRE com o grupo **Investimentos** (depois do resultado operacional) e o subtotal
+  "Resultado após investimentos".
+- Categorias padrão reorganizadas para seguir a planilha do consultório: "Impostos" passa a reunir
+  encargos, contador, CRO, laudos, tarifas bancárias, taxas de maquininha e controle de esterilização;
+  novas categorias "Devoluções a pacientes" e o grupo "Investimentos".
+
+### Alterado
+- Banco de dados: migração 0004 reconstrói a tabela de categorias para aceitar o novo grupo do DRE
+  (dados e referências preservados; backup automático antes).
+
 ## [0.6.0] — 03/11/2026
 
 ### Adicionado (fase 1, incremento 1.6)
