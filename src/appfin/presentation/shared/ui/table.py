@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, QPersistentModelIndex, Qt
-from PySide6.QtGui import QColor
+from PySide6.QtGui import QColor, QFont
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QHeaderView,
@@ -30,6 +30,7 @@ class Column:
     align_right: bool = False
     color: Callable[[Any], str | None] | None = None
     stretch: bool = False
+    bold: Callable[[Any], bool] | None = None
 
 
 class RowsTableModel(QAbstractTableModel):
@@ -74,6 +75,10 @@ class RowsTableModel(QAbstractTableModel):
         if role == Qt.ItemDataRole.ForegroundRole and column.color is not None:
             color = column.color(row)
             return QColor(color) if color else None
+        if role == Qt.ItemDataRole.FontRole and column.bold is not None and column.bold(row):
+            font = QFont()
+            font.setBold(True)
+            return font
         return None
 
     def headerData(  # noqa: N802 - API Qt

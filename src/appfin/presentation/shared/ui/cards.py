@@ -24,8 +24,17 @@ class StatCard(QFrame):
         visibility.changed.connect(lambda _hidden: self._render())
         self._render()
 
-    def set_cents(self, cents: int) -> None:
+    def set_cents(self, cents: int, *, signed_tone: bool = False) -> None:
+        """``signed_tone``: verde se positivo, vermelho se negativo (ex.: saldo)."""
         self._cents = cents
+        if signed_tone:
+            name = (
+                "statValueDanger" if cents < 0 else "statValueSuccess" if cents > 0 else "statValue"
+            )
+            if self.value.objectName() != name:
+                self.value.setObjectName(name)
+                self.value.style().unpolish(self.value)
+                self.value.style().polish(self.value)
         self._render()
 
     def _render(self) -> None:

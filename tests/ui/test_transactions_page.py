@@ -2,39 +2,21 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
 from datetime import date
-from pathlib import Path
 
-import pytest
 from PySide6.QtWidgets import QWidget
 from pytestqt.qtbot import QtBot
 
-from appfin.bootstrap import AppConfig, build_app
-from appfin.domain.entities import Company, Contact
-from appfin.domain.enums import CategoryKind, IntervalUnit, TaxRegime, TransactionKind
+from appfin.domain.entities import Contact
+from appfin.domain.enums import CategoryKind, IntervalUnit, TransactionKind
 from appfin.domain.enums import TransactionStatus as Status
-from appfin.infrastructure.paths import AppPaths
 from appfin.presentation.features.transactions.dialog import TransactionDialog
 from appfin.presentation.features.transactions.view import TransactionsPage
 from appfin.presentation.features.transactions.view_model import StatusFilter
-from appfin.presentation.shared.formatting import HIDDEN_AMOUNT, ValuesVisibility
+from appfin.presentation.shared.formatting import HIDDEN_AMOUNT
 from appfin.presentation.workspace import Workspace
-from tests.support import FAST_MINIMUM, FAST_PARAMS
 
 TODAY = date(2026, 3, 15)
-
-
-@pytest.fixture
-def ws(data_dir: Path) -> Iterator[Workspace]:
-    config = AppConfig(paths=AppPaths(data_dir), kdf_params=FAST_PARAMS, kdf_minimum=FAST_MINIMUM)
-    container = build_app(config, today=lambda: TODAY)
-    container.session.create("girassol trator piano nuvem")
-    workspace = container.workspace_factory(ValuesVisibility())
-    workspace.catalog.save_company(Company(name="Clínica Fictícia"))
-    workspace.catalog.initialize_defaults(TaxRegime.SIMPLES)
-    yield workspace
-    container.session.lock()
 
 
 def _page(qtbot: QtBot, ws: Workspace, kind: TransactionKind) -> TransactionsPage:

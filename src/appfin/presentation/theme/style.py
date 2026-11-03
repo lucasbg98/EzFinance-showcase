@@ -170,6 +170,19 @@ def build_stylesheet() -> str:
     QLabel#statValueWarning {{ font-size: 15pt; font-weight: 600; color: #B54708; }}
     QLabel#statValueDanger {{ font-size: 15pt; font-weight: 600; color: {t["danger"]}; }}
     QFrame#separator {{ background: {t["border"]}; border: none; }}
+    QFrame#panel {{
+        background: {t["surface"]}; border: 1px solid {t["border"]}; border-radius: 8px;
+    }}
+    QLabel#panelTitle {{ font-weight: 600; font-size: 10.5pt; }}
+    QTabWidget::pane {{ border: none; border-top: 1px solid {t["border"]}; top: -1px; }}
+    QTabBar::tab {{
+        background: transparent; padding: 8px 18px; margin-right: 4px; color: {t["text_muted"]};
+        border-bottom: 2px solid transparent;
+    }}
+    QTabBar::tab:selected {{
+        color: {t["primary"]}; border-bottom: 2px solid {t["primary"]}; font-weight: 600;
+    }}
+    QTabBar::tab:hover {{ color: {t["text"]}; }}
     QSpinBox {{
         background: {t["surface"]}; border: 1px solid {t["border"]};
         border-radius: {t["radius"]}; padding: 5px 8px; min-height: 22px;

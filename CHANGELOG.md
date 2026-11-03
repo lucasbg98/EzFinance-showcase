@@ -4,6 +4,14 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 
 ## [Não lançado]
 
+## [0.4.0] — 03/11/2026
+
+### Adicionado (fase 1 — incremento 1.4)
+- Início: cartões do mês, gráfico de recebido × pago nos 12 meses, saldo das contas e vencidas a
+  receber/pagar com atalho para as telas.
+- Relatórios e DRE: DRE mensal/anual em regime de caixa ou competência com % da receita bruta;
+  totais por categoria; contas vencidas com dias de atraso.
+
 ## [0.3.0] — 03/11/2026
 
 ### Adicionado (fase 1 — incremento 1.3)

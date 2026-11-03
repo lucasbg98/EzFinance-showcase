@@ -22,6 +22,8 @@ from appfin.presentation.features.accounts.view import AccountsPage
 from appfin.presentation.features.categories.view import CategoriesPage
 from appfin.presentation.features.company.view import CompanyForm
 from appfin.presentation.features.contacts.view import ContactsPage
+from appfin.presentation.features.dashboard.view import DashboardPage
+from appfin.presentation.features.reports.view import ReportsPage
 from appfin.presentation.features.transactions.view import payables_page, receivables_page
 from appfin.presentation.shared.ui.forms import plain_label
 from appfin.presentation.workspace import Workspace
@@ -45,10 +47,10 @@ def _soon(title: str, increment: str) -> PageFactory:
 
 
 SECTIONS: list[tuple[str, str, PageFactory]] = [
-    ("dashboard", "Início", _soon("Início", "1.4")),
+    ("dashboard", "Início", DashboardPage),
     ("receivables", "Contas a receber", receivables_page),
     ("payables", "Contas a pagar", payables_page),
-    ("reports", "Relatórios e DRE", _soon("Relatórios e DRE", "1.4")),
+    ("reports", "Relatórios e DRE", ReportsPage),
     ("contacts", "Contatos", ContactsPage),
     ("categories", "Categorias", CategoriesPage),
     ("accounts", "Contas", AccountsPage),
@@ -105,6 +107,8 @@ class AppShell(QWidget):
         if page is None:
             factory = next(f for k, _label, f in SECTIONS if k == key)
             page = factory(self._ws)
+            if hasattr(page, "set_navigator"):
+                page.set_navigator(self.open)
             self._pages[key] = page
             self.stack.addWidget(page)
         elif hasattr(page, "reload"):
