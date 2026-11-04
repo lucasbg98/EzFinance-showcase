@@ -4,7 +4,9 @@
 > **v0.3:** consultório **PJ**; DRE com **seletor caixa/competência** (novo campo `accrual_date`);
 > uma única máquina até a fase 2; importação Excel com estrutura genérica até chegar o modelo;
 > análise das skills do projeto em `docs/ANALISE_SKILLS.md`.
-> **Nome provisório:** "AppFinanceiro" (a definir; não usar a marca "app de referência").
+> **Nome:** "EzFinance" (🗣️ 04/11/2026; antes "AppFinanceiro"). Não usar a marca "app de referência". O nome
+> antigo continua só em identificadores técnicos: pasta de dados, nome nas atualizações assinadas,
+> `AppId` do instalador, pacote `appfin` e variáveis `APPFIN_*`.
 > **Mudanças desde a v0.1:** novo contexto de uso (consultório odontológico), stack trocada para
 > **Python + PySide6**, importação do app de referência removida, **importação de planilha Excel** incluída no MVP,
 > DRE, recibos e dados da empresa mantidos, LGPD revista (agora se aplica), assinatura de código adiada.
@@ -727,8 +729,8 @@ AppFinanceiro/
 
 ## 11. Empacotamento, instalação e atualização
 
-- **Build:** PyInstaller *onedir* (sem UPX) → Inno Setup gera `AppFinanceiro-Setup-x.y.z.exe`.
-- **Instalação por usuário** (sem administrador) em `%LOCALAPPDATA%\Programs\AppFinanceiro`; dados em `%APPDATA%\AppFinanceiro\` (banco cifrado, backups locais, logs).
+- **Build:** PyInstaller *onedir* (sem UPX) → Inno Setup gera `EzFinance-Setup-x.y.z.exe`.
+- **Instalação por usuário** (sem administrador) em `%LOCALAPPDATA%\Programs\EzFinance` (instalações anteriores à troca de nome continuam em `...\Programs\AppFinanceiro`); dados em `%APPDATA%\AppFinanceiro\` (nome antigo de propósito) (banco cifrado, backups locais, logs).
 - **Primeira execução:** dados da empresa → criar senha mestra → mostrar e confirmar a **chave de recuperação** → (opcional) conta na nuvem + MFA → pasta de backup → categorias padrão (PF/PJ) → (opcional) importar planilha.
 - **Segunda máquina (v2):** login (senha mestra + TOTP) → baixar o envelope → abrir a DEK → sincronização completa.
 - **Atualização (tufup):** verificação ao iniciar e a cada 24 h; baixa os metadados TUF e verifica as assinaturas → baixa o pacote (ou patch) e verifica o hash → backup automático → instala depois da confirmação → migra o esquema. *Rollback*: reinstalar a versão anterior + backup pré-migração.

@@ -1,4 +1,4 @@
-# AppFinanceiro
+# EzFinance
 
 Gestão financeira de um consultório odontológico: app desktop Windows, **local-first** e **cifrado**
 (Python 3.13 + PySide6 + SQLCipher).

@@ -14,16 +14,17 @@ O instalador ainda não tem assinatura Authenticode (decisão do projeto), entã
 confira se o arquivo é o original:
 
 ```powershell
-Get-FileHash .\AppFinanceiro-Setup-X.Y.Z.exe -Algorithm SHA256
+Get-FileHash .\EzFinance-Setup-X.Y.Z.exe -Algorithm SHA256
 ```
 
-O resultado precisa ser **idêntico** ao do arquivo `AppFinanceiro-Setup-X.Y.Z.exe.sha256` publicado
+O resultado precisa ser **idêntico** ao do arquivo `EzFinance-Setup-X.Y.Z.exe.sha256` publicado
 junto com a versão. Se for diferente, **não instale**.
 
 ## Instalar
 
 - Execute o instalador (não precisa de administrador). O app vai para
-  `%LOCALAPPDATA%\Programs\AppFinanceiro`.
+  `%LOCALAPPDATA%\Programs\EzFinance`. Se o app já estava instalado com o nome antigo
+  (AppFinanceiro), o instalador novo atualiza essa instalação, na pasta em que ela já está.
 - No primeiro uso: criar a **senha mestra** e anotar a **chave de recuperação em papel**. Guarde o
   papel fora do computador (ex.: cofre do consultório). Sem a senha **e** sem a chave, os dados não
   podem ser recuperados por ninguém.
@@ -34,6 +35,9 @@ junto com a versão. Se for diferente, **não instale**.
 |---|---|
 | Banco de dados cifrado, cofre (`vault.json`), logs, backups locais | `%APPDATA%\AppFinanceiro` |
 | Cache de atualizações | `%LOCALAPPDATA%\AppFinanceiro\updates` |
+
+A pasta de dados manteve o nome antigo (`AppFinanceiro`) de propósito: é onde estão o cofre e o
+banco, e trocá-la poderia deixar o app sem os dados.
 
 Desinstalar **não apaga** os dados. Nunca apague o `vault.json` sem um backup: sem ele o banco não abre.
 

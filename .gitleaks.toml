@@ -4,7 +4,7 @@ useDefault = true
 
 [[rules]]
 id = "appfin-recovery-key"
-description = "Possível chave de recuperação do AppFinanceiro (13 grupos de 4 caracteres base32)"
+description = "Possível chave de recuperação do EzFinance (13 grupos de 4 caracteres base32)"
 regex = '''\b[A-Z2-7]{4}(?:-[A-Z2-7]{4}){12}\b'''
 
 [[rules]]

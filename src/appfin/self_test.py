@@ -1,4 +1,4 @@
-"""Autoteste do executável empacotado (``AppFinanceiro.exe --self-test``).
+"""Autoteste do executável empacotado (``EzFinance.exe --self-test``).
 
 Rodado pelo script de release logo após o build: garante que o PyInstaller incluiu tudo o que o
 app precisa em produção (cripto, banco cifrado, migrações, interface, cliente de atualização, o

@@ -1,4 +1,4 @@
-# AppFinanceiro — gestão financeira do consultório odontológico
+# EzFinance — gestão financeira do consultório odontológico
 
 App desktop Windows (Python 3.13 + PySide6 + SQLCipher) para um consultório odontológico pequeno (PJ),
 usado por uma pessoa. **Segurança é a prioridade nº 1** (dados financeiros e de pacientes).

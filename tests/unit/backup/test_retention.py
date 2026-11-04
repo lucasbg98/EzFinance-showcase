@@ -19,10 +19,18 @@ from appfin.infrastructure.backup.retention import (
 def test_name_round_trip() -> None:
     moment = datetime(2026, 3, 15, 9, 5, 7)
 
-    assert backup_name(moment) == "AppFinanceiro-backup-20260315-090507.afbkp"
+    assert backup_name(moment) == "EzFinance-backup-20260315-090507.afbkp"
     assert parse_backup_name(backup_name(moment, 2)) == moment
-    for other in ("foto.jpg", "AppFinanceiro-backup-20261399-000000.afbkp", "x.afbkp"):
+    for other in ("foto.jpg", "EzFinance-backup-20261399-000000.afbkp", "x.afbkp"):
         assert parse_backup_name(other) is None
+
+
+def test_backups_with_the_old_app_name_are_still_recognized() -> None:
+    """Backups feitos antes da troca de nome continuam na retenção e na restauração."""
+    assert parse_backup_name("AppFinanceiro-backup-20260315-090507.afbkp") == datetime(
+        2026, 3, 15, 9, 5, 7
+    )
+    assert parse_backup_name("OutroApp-backup-20260315-090507.afbkp") is None
 
 
 def test_keeps_daily_weekly_and_monthly(tmp_path: Path) -> None:
@@ -49,10 +57,12 @@ def test_keeps_daily_weekly_and_monthly(tmp_path: Path) -> None:
 
 def test_only_app_files_are_listed(tmp_path: Path) -> None:
     (tmp_path / "AppFinanceiro-backup-20260315-090507.afbkp").write_bytes(b"x")
+    (tmp_path / "EzFinance-backup-20260316-090507.afbkp").write_bytes(b"x")
     (tmp_path / "planilha.xlsx").write_bytes(b"x")
-    (tmp_path / "AppFinanceiro-backup-20260315-090507.afbkp.tmp").write_bytes(b"x")
+    (tmp_path / "EzFinance-backup-20260316-090507.afbkp.tmp").write_bytes(b"x")
 
-    assert [p.name for _m, p in list_backups(tmp_path)] == [
-        "AppFinanceiro-backup-20260315-090507.afbkp"
+    assert sorted(p.name for _m, p in list_backups(tmp_path)) == [
+        "AppFinanceiro-backup-20260315-090507.afbkp",
+        "EzFinance-backup-20260316-090507.afbkp",
     ]
     assert list_backups(tmp_path / "nao-existe") == []

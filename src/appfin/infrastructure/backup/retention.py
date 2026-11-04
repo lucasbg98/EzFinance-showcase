@@ -13,8 +13,12 @@ from datetime import datetime
 from pathlib import Path
 
 EXTENSION = ".afbkp"
-_PREFIX = "AppFinanceiro-backup-"
-_NAME = re.compile(r"^AppFinanceiro-backup-(\d{8})-(\d{6})(?:-(\d+))?" + re.escape(EXTENSION) + "$")
+_PREFIX = "EzFinance-backup-"
+# Os backups feitos antes da troca de nome ("AppFinanceiro-backup-…") continuam reconhecidos:
+# entram na retenção e aparecem para restaurar.
+_NAME = re.compile(
+    r"^(?:EzFinance|AppFinanceiro)-backup-(\d{8})-(\d{6})(?:-(\d+))?" + re.escape(EXTENSION) + "$"
+)
 KEEP_RECENT = 10
 KEEP_DAILY = 7
 KEEP_WEEKLY = 4

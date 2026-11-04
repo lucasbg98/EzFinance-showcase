@@ -10,7 +10,7 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-APP_DIR_NAME = "AppFinanceiro"
+APP_DIR_NAME = "AppFinanceiro"  # nome antigo de propósito: é onde estão o cofre e o banco
 DATA_DIR_ENV = "APPFIN_DATA_DIR"
 
 

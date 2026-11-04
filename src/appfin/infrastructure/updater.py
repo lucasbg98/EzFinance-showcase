@@ -29,8 +29,10 @@ from typing import Any, Final
 
 from appfin import __version__
 
+# Identificador do app nas atualizações assinadas (TUF): é o nome antigo de propósito; trocar faria
+# as versões instaladas deixarem de reconhecer os pacotes. O nome visível é ``PRODUCT_NAME``.
 APP_NAME: Final = "AppFinanceiro"
-EXE_NAME: Final = "AppFinanceiro.exe"
+EXE_NAME: Final = "EzFinance.exe"
 # URL pública onde ficam ``metadata/`` e ``targets/``. Vazia = atualização desativada até a
 # hospedagem ser escolhida. Mesmo apontando para um servidor hostil, nada sem assinatura é aceito.
 DEFAULT_UPDATE_URL: Final = ""

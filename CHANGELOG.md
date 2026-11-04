@@ -4,6 +4,15 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 
 ## [Não lançado]
 
+## [0.7.1] — 04/11/2026
+
+### Alterado
+- O app passa a se chamar **EzFinance** (janela, mensagens, instalador, atalhos, executável,
+  recibo em PDF, propriedades das planilhas exportadas e nome dos novos backups).
+- O instalador novo atualiza a instalação existente (mesmo `AppId`) e apaga o executável e os
+  atalhos com o nome antigo. A pasta de dados (`%APPDATA%\AppFinanceiro`) não muda, e os backups
+  `AppFinanceiro-backup-…` continuam reconhecidos.
+
 ## [0.7.0] — 04/11/2026
 
 Importação da planilha "Fluxo de caixa" do consultório e DRE detalhável (fase 1, incremento 1.7).

@@ -27,6 +27,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from appfin import PRODUCT_NAME
 from appfin.application.backup import BackupStatus
 from appfin.application.ports import (
     BackupFileError,
@@ -55,7 +56,7 @@ COUNT_LABELS = {
 
 # Ganchos substituíveis nos testes (evitam abrir diálogos do sistema).
 ask_backup_file: Callable[[QWidget], str] = lambda parent: QFileDialog.getOpenFileName(  # noqa: E731
-    parent, "Escolher backup", "", f"Backup do AppFinanceiro (*{EXTENSION})"
+    parent, "Escolher backup", "", f"Backup do {PRODUCT_NAME} (*{EXTENSION})"
 )[0]
 ask_folder: Callable[[QWidget], str] = lambda parent: QFileDialog.getExistingDirectory(  # noqa: E731
     parent, "Pasta extra para os backups"
@@ -112,7 +113,7 @@ class RestoreDialog(FormDialog):
         super().__init__(
             "Restaurar backup",
             parent,
-            subtitle="Recupera os dados a partir de um arquivo de backup do AppFinanceiro.",
+            subtitle=f"Recupera os dados a partir de um arquivo de backup do {PRODUCT_NAME}.",
             save_text="Verificar backup",
             width=600,
         )

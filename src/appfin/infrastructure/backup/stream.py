@@ -32,6 +32,7 @@ from typing import Any, BinaryIO
 import nacl.bindings as sodium
 import nacl.exceptions
 
+from appfin import PRODUCT_NAME
 from appfin.infrastructure.crypto.kdf import derive_subkey
 from appfin.infrastructure.crypto.secret import SecretBytes
 
@@ -95,7 +96,7 @@ def write_backup(
 
 def read_header(source: BinaryIO) -> BackupHeader:
     if source.read(len(MAGIC)) != MAGIC:
-        raise BackupFormatError("O arquivo não é um backup do AppFinanceiro.")
+        raise BackupFormatError(f"O arquivo não é um backup do {PRODUCT_NAME}.")
     length = _read_length(source, MAX_HEADER_BYTES)
     raw = _read_exact(source, length)
     try:

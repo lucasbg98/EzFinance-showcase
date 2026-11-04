@@ -14,7 +14,8 @@ em papel: um backup que nunca foi restaurado não é um backup confiável.
     contra disco estragado ou computador roubado;
   - numa **pasta extra** escolhida em *Backup e segurança*, que pode ser um pen drive ou uma pasta
     do OneDrive. **Configure a pasta extra.** O backup na nuvem do app chega na fase 2.
-- **Arquivos:** `AppFinanceiro-backup-AAAAMMDD-HHMMSS.afbkp`. Ficam os 10 mais recentes e, além
+- **Arquivos:** `EzFinance-backup-AAAAMMDD-HHMMSS.afbkp` (os feitos antes da troca de nome,
+  `AppFinanceiro-backup-…`, continuam valendo para a retenção e para restaurar). Ficam os 10 mais recentes e, além
   deles, um por dia (7 dias), um por semana (4 semanas) e um por mês (12 meses). Os outros arquivos
   da pasta nunca são tocados.
 - **Segurança:**

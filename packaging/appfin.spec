@@ -45,9 +45,9 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name="AppFinanceiro",
+    name="EzFinance",
     console=False,
     upx=False,
     version=str(ROOT / "dist" / "version_info.txt"),
 )
-coll = COLLECT(exe, a.binaries, a.datas, upx=False, name="AppFinanceiro")
+coll = COLLECT(exe, a.binaries, a.datas, upx=False, name="EzFinance")

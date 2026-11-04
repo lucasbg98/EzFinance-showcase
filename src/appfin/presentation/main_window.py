@@ -14,7 +14,7 @@ from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QAction, QCloseEvent, QKeySequence
 from PySide6.QtWidgets import QDialog, QMainWindow, QStackedWidget, QToolBar, QWidget
 
-from appfin import __version__
+from appfin import PRODUCT_NAME, __version__
 from appfin.application.session import AppSession, SessionState
 from appfin.infrastructure.app_logging import log_exception
 from appfin.infrastructure.updater import Updater
@@ -29,7 +29,7 @@ from appfin.presentation.shared.ui.feedback import show_error, show_info
 from appfin.presentation.shell import AppShell
 from appfin.presentation.workspace import WorkspaceFactory
 
-APP_TITLE = "AppFinanceiro"
+APP_TITLE = PRODUCT_NAME
 AUTO_BACKUP_CHECK_MS = 30 * 60 * 1000  # confere a cada 30 min se já passaram 24 h do último
 
 

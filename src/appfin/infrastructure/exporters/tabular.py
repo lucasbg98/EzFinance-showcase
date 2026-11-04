@@ -17,6 +17,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Font
 from openpyxl.utils import get_column_letter
 
+from appfin import PRODUCT_NAME
 from appfin.application.export_table import Cell, ColumnKind, ExportTable
 from appfin.br_format import format_date, format_percent_tenths
 
@@ -91,7 +92,7 @@ def to_xlsx(table: ExportTable) -> bytes:
         widest = max([len(column.header)] + [len(str(r[index - 1] or "")) for r in table.rows])
         sheet.column_dimensions[get_column_letter(index)].width = min(max(widest + 2, 10), 60)
     sheet.freeze_panes = "A2"
-    workbook.properties.creator = "AppFinanceiro"
+    workbook.properties.creator = PRODUCT_NAME
     buffer = io.BytesIO()
     workbook.save(buffer)
     return buffer.getvalue()

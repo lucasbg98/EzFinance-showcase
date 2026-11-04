@@ -5,6 +5,7 @@ from __future__ import annotations
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QMessageBox, QWidget
 
+from appfin import PRODUCT_NAME
 from appfin.domain.errors import (
     BusinessRuleError,
     ConcurrencyConflictError,
@@ -29,7 +30,7 @@ def show_error(parent: QWidget, error: Exception, event: str) -> None:
 
 
 def show_info(parent: QWidget, text: str) -> None:
-    _box(parent, QMessageBox.Icon.Information, "AppFinanceiro", text)
+    _box(parent, QMessageBox.Icon.Information, PRODUCT_NAME, text)
 
 
 def confirm(parent: QWidget, text: str, *, accept: str, decline: str = "Cancelar") -> bool:

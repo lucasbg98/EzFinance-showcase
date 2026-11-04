@@ -14,6 +14,7 @@ from reportlab.lib.units import mm as _reportlab_mm
 from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.pdfgen.canvas import Canvas
 
+from appfin import PRODUCT_NAME
 from appfin.application.receipts import ReceiptData
 from appfin.br_format import format_cents, format_date, format_document, format_phone, long_date
 from appfin.domain.enums import PaymentMethod, TransactionKind
@@ -66,8 +67,8 @@ def render_receipt(data: ReceiptData) -> bytes:
     buffer = io.BytesIO()
     canvas = Canvas(buffer, pagesize=A4, invariant=True)
     canvas.setTitle(f"Recibo {receipt_number(data.receipt.number)}")
-    canvas.setAuthor("AppFinanceiro")
-    canvas.setCreator("AppFinanceiro")
+    canvas.setAuthor(PRODUCT_NAME)
+    canvas.setCreator(PRODUCT_NAME)
     width, height = A4
     right = width - _MARGIN
     y = height - _MARGIN
@@ -116,7 +117,9 @@ def render_receipt(data: ReceiptData) -> bytes:
 
     canvas.setFont(_FONT, 8)
     canvas.setFillColorRGB(*_MUTED)
-    footer = "Comprovante interno emitido pelo AppFinanceiro. Não substitui a nota fiscal (NFS-e)."
+    footer = (
+        f"Comprovante interno emitido pelo {PRODUCT_NAME}. Não substitui a nota fiscal (NFS-e)."
+    )
     if data.reissue:
         footer += "  •  2ª via"
     canvas.drawString(_MARGIN, _MARGIN, footer)

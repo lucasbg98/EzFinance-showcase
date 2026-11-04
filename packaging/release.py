@@ -1,4 +1,4 @@
-"""Release do AppFinanceiro: chaves TUF, build (PyInstaller + Inno Setup), publicação e teste local.
+"""Release do EzFinance: chaves TUF, build (PyInstaller + Inno Setup), publicação e teste local.
 
 Uso (sempre via uv, na raiz do projeto):
 
@@ -29,8 +29,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 DIST = ROOT / "dist"
-BUNDLE = DIST / "AppFinanceiro"
+PRODUCT_NAME = "EzFinance"  # nome visível (igual a appfin.PRODUCT_NAME)
+EXE_NAME = f"{PRODUCT_NAME}.exe"
+BUNDLE = DIST / PRODUCT_NAME
 ROOT_METADATA_FILE = ROOT / "src" / "appfin" / "resources" / "tuf_root.json"
+# Identificador nas atualizações assinadas (TUF): nome antigo de propósito (updater.APP_NAME).
 APP_NAME = "AppFinanceiro"
 EXPIRATION_DAYS = {"root": 365, "targets": 90, "snapshot": 90, "timestamp": 30}
 ISCC_CANDIDATES = [
@@ -114,7 +117,7 @@ def cmd_build(args: argparse.Namespace) -> None:
             str(ROOT / "packaging" / "appfin.spec"),
         ]
     )
-    if not (BUNDLE / "AppFinanceiro.exe").is_file():
+    if not (BUNDLE / EXE_NAME).is_file():
         sys.exit("PyInstaller não gerou o executável.")
     _self_test()
     if args.no_installer:
@@ -123,7 +126,7 @@ def cmd_build(args: argparse.Namespace) -> None:
     if iscc is None:
         sys.exit("Inno Setup 6 (ISCC.exe) não encontrado.")
     _run([str(iscc), f"/DAppVersion={version}", str(ROOT / "packaging" / "installer.iss")])
-    installer = DIST / "installer" / f"{APP_NAME}-Setup-{version}.exe"
+    installer = DIST / "installer" / f"{PRODUCT_NAME}-Setup-{version}.exe"
     digest = hashlib.sha256(installer.read_bytes()).hexdigest()
     checksum = installer.with_name(installer.name + ".sha256")
     checksum.write_text(f"{digest}  {installer.name}\n", encoding="ascii")
@@ -132,7 +135,7 @@ def cmd_build(args: argparse.Namespace) -> None:
 
 def cmd_publish(args: argparse.Namespace) -> None:
     version = app_version()
-    if not (BUNDLE / "AppFinanceiro.exe").is_file():
+    if not (BUNDLE / EXE_NAME).is_file():
         sys.exit("Rode primeiro: release.py build")
     repo = _existing_repository(args.encrypted)
     repo.add_bundle(new_bundle_dir=BUNDLE, new_version=version, skip_patch=True)
@@ -164,7 +167,7 @@ def cmd_serve(args: argparse.Namespace) -> None:
 def _self_test() -> None:
     """Roda o executável empacotado em modo autoteste: pega módulos/arquivos faltando no build."""
     result = subprocess.run(  # noqa: S603 - executável recém-gerado pelo próprio build
-        [str(BUNDLE / "AppFinanceiro.exe"), "--self-test"], cwd=ROOT, timeout=120, check=False
+        [str(BUNDLE / EXE_NAME), "--self-test"], cwd=ROOT, timeout=120, check=False
     )
     if result.returncode != 0:
         sys.exit("Autoteste do executável FALHOU: o build está incompleto.")
@@ -186,11 +189,11 @@ def _write_version_info(version: str) -> None:
   kids=[
     StringFileInfo([StringTable('041604B0', [
       StringStruct('CompanyName', 'Uso interno do consultório'),
-      StringStruct('FileDescription', 'AppFinanceiro'),
+      StringStruct('FileDescription', '{PRODUCT_NAME}'),
       StringStruct('FileVersion', '{version}'),
-      StringStruct('InternalName', 'AppFinanceiro'),
-      StringStruct('OriginalFilename', 'AppFinanceiro.exe'),
-      StringStruct('ProductName', 'AppFinanceiro'),
+      StringStruct('InternalName', '{PRODUCT_NAME}'),
+      StringStruct('OriginalFilename', '{EXE_NAME}'),
+      StringStruct('ProductName', '{PRODUCT_NAME}'),
       StringStruct('ProductVersion', '{version}')])]),
     VarFileInfo([VarStruct('Translation', [1046, 1200])])
   ]
