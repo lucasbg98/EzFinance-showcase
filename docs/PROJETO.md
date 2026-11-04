@@ -252,12 +252,13 @@ flowchart TB
 | `account` | id, name, kind (`cash`,`checking`,`savings`,`card_acquirer`,`other`), opening_balance_cents, opening_date, archived | "Contas caixa" ampliadas |
 | `category` | id, parent_id, name, kind (`income`,`expense`,`both`), dre_group, archived | 2 níveis |
 | `contact` | id, roles (`patient`,`supplier`,`insurer`,`other` — conjunto), person_type (`pf`,`pj`), name, doc_number, phone, email, address (rua, número, bairro, cidade, UF, CEP), notes | Dados de pacientes: **minimizar** (seção 7.12) |
-| `transaction` | id, kind (`income`,`expense`,`transfer_out`,`transfer_in`), description, amount_cents, **accrual_date** (competência), due_date, paid_date, status (`pending`,`paid`,`cancelled`), account_id, **transfer_id** (D5: liga as duas pernas de uma transferência), category_id, contact_id, payment_method (`cash`,`pix`,`debit`,`credit`,`boleto`,`transfer`,`check`,`other`), document_number, official_receipt_ref, notes, installment_group_id, installment_number, recurrence_id, import_batch_id, import_row_hash | "Vencida" é **calculada** |
+| `transaction` | id, kind (`income`,`expense`,`transfer_out`,`transfer_in`), description, amount_cents, **accrual_date** (competência), due_date, paid_date, status (`pending`,`paid`,`cancelled`), account_id, **transfer_id** (D5: liga as duas pernas de uma transferência), category_id, contact_id, payment_method (`cash`,`pix`,`debit`,`credit`,`boleto`,`transfer`,`check`,`other`), document_number, official_receipt_ref, notes, installment_group_id, installment_number, recurrence_id, import_batch_id, **import_row_key** (SHA-256 da célula da planilha; único entre os não excluídos; editar no app não muda lote nem célula) | "Vencida" é **calculada** |
 | `installment_group` | id, total_installments, interval_unit (`day`,`month`), interval_value, total_amount_cents | Diferença de arredondamento vai para a 1ª parcela (💡) |
 | `recurrence_rule` | id, template, freq, interval, by_month_day, start_date, end_date, last_generated_date | v2 |
 | `receipt` | id, transaction_id, number (sequencial), issued_at, pdf_sha256 | Numeração sequencial dos recibos internos |
-| `import_batch` | id, source (`xlsx`,`csv`), file_name, file_sha256, mapping_profile_id, imported_at, rows_total, rows_ok, rows_skipped, rows_error, undone_at | Permite **desfazer** uma importação |
-| `import_mapping_profile` | id, name, sheet_name, header_row, column_map (JSON), date_format, decimal_sep, defaults (JSON) | Mapeamento reutilizável da planilha |
+| `import_batch` | id, profile_id, source (`xlsx`,`csv`), file_sha256, period_year, created/replaced/removed/skipped/kept_count, imported_at, undone_at | Permite **desfazer** uma importação. **Sem nome do arquivo** (pode conter nome de pessoa): o SHA-256 basta |
+| `import_profile` | id, name, layout (`monthly_matrix`), line_map (JSON: linha da planilha → categoria) | Mapeamento reutilizável; só no banco cifrado (rótulos podem ter nomes) |
+| `import_replacement` | batch_id, old_transaction_id, new_transaction_id (vazio = removido) | O que um lote substituiu, para o desfazer restaurar |
 | `setting` | key, value | Preferências não sensíveis |
 | `outbox`, `sync_state`, `device` | (técnicas) | Não sincronizam |
 | `sync_conflict` *(técnica, fase 2)* | id, record_id, entity, losing_payload (cifrado pelo SQLCipher), detected_at, resolved_at, resolution | Lista "Conflitos para revisar" (D6) |
@@ -284,7 +285,8 @@ erDiagram
   INSTALLMENT_GROUP ||--o{ TRANSACTION : "parcela"
   RECURRENCE_RULE ||--o{ TRANSACTION : "gera"
   IMPORT_BATCH ||--o{ TRANSACTION : "importou"
-  IMPORT_MAPPING_PROFILE ||--o{ IMPORT_BATCH : "usado em"
+  IMPORT_PROFILE ||--o{ IMPORT_BATCH : "usado em"
+  IMPORT_BATCH ||--o{ IMPORT_REPLACEMENT : "substituiu"
   TRANSACTION ||--o| RECEIPT : "comprovado por"
 
   COMPANY {
@@ -335,7 +337,7 @@ erDiagram
     int installment_number
     uuid recurrence_id FK
     uuid import_batch_id FK
-    text import_row_hash
+    text import_row_key
   }
   INSTALLMENT_GROUP {
     uuid id PK
@@ -360,10 +362,16 @@ erDiagram
     text file_sha256
     int rows_ok
   }
-  IMPORT_MAPPING_PROFILE {
+  IMPORT_PROFILE {
     uuid id PK
     text name
-    text column_map
+    text layout
+    text line_map
+  }
+  IMPORT_REPLACEMENT {
+    uuid batch_id FK
+    uuid old_transaction_id FK
+    uuid new_transaction_id FK
   }
 ```
 

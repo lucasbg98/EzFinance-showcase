@@ -8,7 +8,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+import json
+from collections.abc import Callable, Collection, Iterator, Sequence
 from dataclasses import replace
 from datetime import date, datetime
 from typing import Any, Self, TypeVar
@@ -18,6 +19,10 @@ from appfin.domain.entities import (
     Category,
     Company,
     Contact,
+    ImportBatch,
+    ImportCounts,
+    ImportProfile,
+    ImportReplacement,
     InstallmentGroup,
     Receipt,
     Transaction,
@@ -27,6 +32,8 @@ from appfin.domain.enums import (
     CategoryKind,
     ContactRole,
     DreGroup,
+    ImportLayout,
+    ImportSource,
     IntervalUnit,
     LegalType,
     PaymentMethod,
@@ -41,6 +48,22 @@ from appfin.infrastructure.persistence.database import Connection
 
 Row = tuple[Any, ...]
 E = TypeVar("E")
+# Bem abaixo do limite de parâmetros do SQLite; listas maiores vão em partes.
+_IN_CHUNK = 500
+
+
+def _chunks(values: Collection[str]) -> Iterator[list[str]]:
+    items = list(dict.fromkeys(values))
+    for start in range(0, len(items), _IN_CHUNK):
+        yield items[start : start + _IN_CHUNK]
+
+
+def _placeholders(count: int) -> str:
+    return ", ".join("?" * count)
+
+
+def _datetime(value: str | None) -> datetime | None:
+    return datetime.fromisoformat(value) if value else None
 
 
 def _iso(value: date | None) -> str | None:
@@ -425,8 +448,10 @@ class SqlTransactionRepository(_Base):
         "kind, description, amount_cents, currency, accrual_date, due_date, paid_date, status, "
         "account_id, category_id, contact_id, payment_method, document_number, "
         "official_receipt_ref, notes, installment_group_id, installment_number, transfer_id, "
-        "import_batch_id"
+        "import_batch_id, import_row_key"
     )
+    # Origem da importação: gravada só na inclusão; editar no app nunca troca o lote nem a célula.
+    _provenance = frozenset({"import_batch_id", "import_row_key"})
     _select = (
         f"SELECT id, {_fields}, version FROM financial_transaction "  # noqa: S608  # nosec B608
         "WHERE deleted_at IS NULL"
@@ -454,7 +479,8 @@ class SqlTransactionRepository(_Base):
             installment_number=row[17],
             transfer_id=row[18],
             import_batch_id=row[19],
-            version=row[20],
+            import_row_key=row[20],
+            version=row[21],
         )
 
     @staticmethod
@@ -479,6 +505,7 @@ class SqlTransactionRepository(_Base):
             t.installment_number,
             t.transfer_id,
             t.import_batch_id,
+            t.import_row_key,
         )
 
     def get(self, transaction_id: str) -> Transaction | None:
@@ -498,24 +525,39 @@ class SqlTransactionRepository(_Base):
         return [self._map(row) for row in rows]
 
     def add(self, transaction: Transaction) -> Transaction:
-        self._require_saved_id(transaction.id)
+        return self.add_many([transaction])[0]
+
+    def add_many(self, transactions: Sequence[Transaction]) -> list[Transaction]:
+        """Inclusão em lote (``executemany``), dentro da transação da unit of work."""
+        for transaction in transactions:
+            self._require_saved_id(transaction.id)
         now = self._timestamp()
-        placeholders = ", ".join("?" * 20)
-        self._db.execute(
+        count = len(self._fields.split(",")) + 1
+        self._db.executemany(
             f"INSERT INTO financial_transaction (id, {self._fields}, version, created_at, "  # noqa: S608  # nosec B608
-            f"updated_at) VALUES ({placeholders}, 1, ?, ?)",
-            (transaction.id, *self._values(transaction), now, now),
+            f"updated_at) VALUES ({_placeholders(count)}, 1, ?, ?)",
+            [(t.id, *self._values(t), now, now) for t in transactions],
         )
-        self._enqueue(transaction.id)
-        return replace(transaction, version=1)
+        self._db.executemany(
+            "INSERT INTO outbox (entity, record_id, operation, created_at) "
+            "VALUES (?, ?, 'upsert', ?)",
+            [(self._entity, t.id, now) for t in transactions],
+        )
+        return [replace(t, version=1) for t in transactions]
 
     def update(self, transaction: Transaction) -> Transaction:
-        assignments = ", ".join(f"{name.strip()} = ?" for name in self._fields.split(","))
+        names = [name.strip() for name in self._fields.split(",")]
+        pairs = [
+            (name, value)
+            for name, value in zip(names, self._values(transaction), strict=True)
+            if name not in self._provenance
+        ]
+        assignments = ", ".join(f"{name} = ?" for name, _value in pairs)
         cursor = self._db.execute(
             f"UPDATE financial_transaction SET {assignments}, version = version + 1, "  # noqa: S608  # nosec B608
             "updated_at = ? WHERE id = ? AND version = ? AND deleted_at IS NULL",
             (
-                *self._values(transaction),
+                *(value for _name, value in pairs),
                 self._timestamp(),
                 transaction.id,
                 transaction.version,
@@ -524,6 +566,37 @@ class SqlTransactionRepository(_Base):
         self._check_updated(cursor, transaction.id)
         self._enqueue(transaction.id)
         return replace(transaction, version=transaction.version + 1)
+
+    def list_by_import_batch(self, batch_id: str) -> list[Transaction]:
+        rows = self._db.execute(
+            self._select + " AND import_batch_id = ? ORDER BY due_date, id", (batch_id,)
+        ).fetchall()
+        return [self._map(row) for row in rows]
+
+    def find_by_import_row_keys(self, row_keys: Collection[str]) -> dict[str, Transaction]:
+        """Lançamento não excluído de cada célula já importada (chave → lançamento)."""
+        found: dict[str, Transaction] = {}
+        for chunk in _chunks(row_keys):
+            rows = self._db.execute(
+                self._select + f" AND import_row_key IN ({_placeholders(len(chunk))})",
+                chunk,
+            ).fetchall()
+            for row in rows:
+                transaction = self._map(row)
+                found[str(transaction.import_row_key)] = transaction
+        return found
+
+    def restore(self, transaction_id: str) -> None:
+        """Desfaz a exclusão lógica. Usado só ao desfazer uma importação."""
+        now = self._timestamp()
+        cursor = self._db.execute(
+            "UPDATE financial_transaction SET deleted_at = NULL, updated_at = ?, "
+            "version = version + 1 WHERE id = ? AND deleted_at IS NOT NULL",
+            (now, transaction_id),
+        )
+        if cursor.rowcount != 1:
+            raise NotFoundError("Lançamento excluído não encontrado.")
+        self._enqueue(transaction_id)
 
     def soft_delete(self, transaction_id: str) -> None:
         self._soft_delete(transaction_id)
@@ -598,6 +671,17 @@ class SqlReceiptRepository(_Base):
             return None
         return Receipt(row[0], row[1], row[2], _required_date(row[3]), row[4])
 
+    def transactions_with_receipt(self, transaction_ids: Collection[str]) -> set[str]:
+        found: set[str] = set()
+        for chunk in _chunks(transaction_ids):
+            rows = self._db.execute(
+                "SELECT transaction_id FROM receipt "  # noqa: S608  # nosec B608
+                f"WHERE transaction_id IN ({_placeholders(len(chunk))})",
+                chunk,
+            ).fetchall()
+            found.update(str(row[0]) for row in rows)
+        return found
+
     def next_number(self) -> int:
         # Chamado dentro da unit of work (BEGIN IMMEDIATE): sem corrida entre duas emissões.
         row = self._db.execute("SELECT COALESCE(MAX(number), 0) + 1 FROM receipt").fetchone()
@@ -620,6 +704,189 @@ class SqlReceiptRepository(_Base):
         )
         self._enqueue(receipt.id)
         return replace(receipt, version=1)
+
+
+# ---------------------------------------------------------------------- importação de planilha
+class SqlImportBatchRepository(_Base):
+    """Lotes de importação + perfis de mapeamento (um agregado)."""
+
+    _table = "import_batch"
+    _entity = "import_batch"
+    _batch_select = (
+        "SELECT id, profile_id, source, file_sha256, period_year, created_count, "
+        "replaced_count, removed_count, skipped_count, kept_count, imported_at, undone_at, "
+        "version FROM import_batch"
+    )
+    _profile_select = (
+        "SELECT id, name, layout, line_map, version FROM import_profile WHERE deleted_at IS NULL"
+    )
+
+    # ------------------------------------------------------------------ perfis
+    @staticmethod
+    def _map_profile(row: Row) -> ImportProfile:
+        return ImportProfile(
+            id=row[0],
+            name=row[1],
+            layout=ImportLayout(row[2]),
+            line_map=json.loads(row[3]),
+            version=row[4],
+        )
+
+    @staticmethod
+    def _line_map_json(profile: ImportProfile) -> str:
+        return json.dumps(dict(profile.line_map), ensure_ascii=False, sort_keys=True)
+
+    def _enqueue_profile(self, profile_id: str) -> None:
+        self._db.execute(
+            "INSERT INTO outbox (entity, record_id, operation, created_at) VALUES (?, ?, ?, ?)",
+            ("import_profile", profile_id, "upsert", self._timestamp()),
+        )
+
+    def get_profile(self, profile_id: str) -> ImportProfile | None:
+        row = self._db.execute(self._profile_select + " AND id = ?", (profile_id,)).fetchone()
+        return self._map_profile(row) if row else None
+
+    def find_profile(self, name: str) -> ImportProfile | None:
+        row = self._db.execute(
+            self._profile_select + " AND name = ? COLLATE NOCASE", (name,)
+        ).fetchone()
+        return self._map_profile(row) if row else None
+
+    def add_profile(self, profile: ImportProfile) -> ImportProfile:
+        self._require_saved_id(profile.id)
+        now = self._timestamp()
+        self._db.execute(
+            "INSERT INTO import_profile (id, name, layout, line_map, version, created_at, "
+            "updated_at) VALUES (?, ?, ?, ?, 1, ?, ?)",
+            (
+                profile.id,
+                profile.name,
+                profile.layout.value,
+                self._line_map_json(profile),
+                now,
+                now,
+            ),
+        )
+        self._enqueue_profile(profile.id)
+        return replace(profile, version=1)
+
+    def update_profile(self, profile: ImportProfile) -> ImportProfile:
+        cursor = self._db.execute(
+            "UPDATE import_profile SET name = ?, layout = ?, line_map = ?, "
+            "version = version + 1, updated_at = ? WHERE id = ? AND version = ? "
+            "AND deleted_at IS NULL",
+            (
+                profile.name,
+                profile.layout.value,
+                self._line_map_json(profile),
+                self._timestamp(),
+                profile.id,
+                profile.version,
+            ),
+        )
+        if cursor.rowcount != 1:
+            if self.get_profile(profile.id) is None:
+                raise NotFoundError("Perfil da planilha não encontrado.")
+            raise ConcurrencyConflictError("O perfil da planilha foi alterado. Recarregue.")
+        self._enqueue_profile(profile.id)
+        return replace(profile, version=profile.version + 1)
+
+    # ------------------------------------------------------------------ lotes
+    @staticmethod
+    def _map(row: Row) -> ImportBatch:
+        return ImportBatch(
+            id=row[0],
+            profile_id=row[1],
+            source=ImportSource(row[2]),
+            file_sha256=row[3],
+            period_year=row[4],
+            counts=ImportCounts(row[5], row[6], row[7], row[8], row[9]),
+            imported_at=datetime.fromisoformat(row[10]),
+            undone_at=_datetime(row[11]),
+            version=row[12],
+        )
+
+    @staticmethod
+    def _counts(batch: ImportBatch) -> Row:
+        c = batch.counts
+        return (c.created, c.replaced, c.removed, c.skipped, c.kept)
+
+    def get(self, batch_id: str) -> ImportBatch | None:
+        row = self._db.execute(self._batch_select + " WHERE id = ?", (batch_id,)).fetchone()
+        return self._map(row) if row else None
+
+    def list_recent(self, *, limit: int = 100) -> list[ImportBatch]:
+        rows = self._db.execute(
+            self._batch_select + " ORDER BY imported_at DESC, id DESC LIMIT ?",
+            (min(max(limit, 1), 1000),),
+        ).fetchall()
+        return [self._map(row) for row in rows]
+
+    def add(self, batch: ImportBatch) -> ImportBatch:
+        self._require_saved_id(batch.id)
+        now = self._timestamp()
+        self._db.execute(
+            "INSERT INTO import_batch (id, profile_id, source, file_sha256, period_year, "
+            "created_count, replaced_count, removed_count, skipped_count, kept_count, "
+            "imported_at, undone_at, version, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)",
+            (
+                batch.id,
+                batch.profile_id,
+                batch.source.value,
+                batch.file_sha256,
+                batch.period_year,
+                *self._counts(batch),
+                batch.imported_at.isoformat(),
+                batch.undone_at.isoformat() if batch.undone_at else None,
+                now,
+                now,
+            ),
+        )
+        self._enqueue(batch.id)
+        return replace(batch, version=1)
+
+    def update(self, batch: ImportBatch) -> ImportBatch:
+        """Depois de gravado, só as contagens e o "desfeito em" mudam."""
+        cursor = self._db.execute(
+            "UPDATE import_batch SET created_count = ?, replaced_count = ?, removed_count = ?, "
+            "skipped_count = ?, kept_count = ?, undone_at = ?, version = version + 1, "
+            "updated_at = ? WHERE id = ? AND version = ?",
+            (
+                *self._counts(batch),
+                batch.undone_at.isoformat() if batch.undone_at else None,
+                self._timestamp(),
+                batch.id,
+                batch.version,
+            ),
+        )
+        if cursor.rowcount != 1:
+            if self.get(batch.id) is None:
+                raise NotFoundError("Importação não encontrada.")
+            raise ConcurrencyConflictError("A importação foi alterada. Recarregue.")
+        self._enqueue(batch.id)
+        return replace(batch, version=batch.version + 1)
+
+    # ------------------------------------------------------------------ substituições
+    def add_replacements(self, replacements: Sequence[ImportReplacement]) -> None:
+        if not replacements:
+            return
+        self._db.executemany(
+            "INSERT INTO import_replacement (batch_id, old_transaction_id, new_transaction_id) "
+            "VALUES (?, ?, ?)",
+            [(r.batch_id, r.old_transaction_id, r.new_transaction_id) for r in replacements],
+        )
+        # As substituições fazem parte do lote: a sincronização leva o lote inteiro.
+        for batch_id in dict.fromkeys(r.batch_id for r in replacements):
+            self._enqueue(batch_id)
+
+    def list_replacements(self, batch_id: str) -> list[ImportReplacement]:
+        rows = self._db.execute(
+            "SELECT batch_id, old_transaction_id, new_transaction_id FROM import_replacement "
+            "WHERE batch_id = ? ORDER BY old_transaction_id",
+            (batch_id,),
+        ).fetchall()
+        return [ImportReplacement(row[0], row[1], row[2]) for row in rows]
 
 
 # ---------------------------------------------------------------------- preferências
@@ -659,6 +926,7 @@ class SqlUnitOfWork:
         self.contacts = SqlContactRepository(connection, now)
         self.transactions = SqlTransactionRepository(connection, now)
         self.receipts = SqlReceiptRepository(connection, now)
+        self.imports = SqlImportBatchRepository(connection, now)
         self.settings = SqlSettingsRepository(connection, now)
 
     def __enter__(self) -> Self:

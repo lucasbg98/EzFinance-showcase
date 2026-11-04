@@ -6,14 +6,19 @@ Metadados técnicos (``created_at``/``updated_at``/``deleted_at``) ficam na pers
 
 from __future__ import annotations
 
+import re
+from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
-from datetime import date
+from datetime import date, datetime
+from types import MappingProxyType
 
 from appfin.domain.enums import (
     AccountKind,
     CategoryKind,
     ContactRole,
     DreGroup,
+    ImportLayout,
+    ImportSource,
     IntervalUnit,
     LegalType,
     PaymentMethod,
@@ -22,7 +27,7 @@ from appfin.domain.enums import (
     TransactionKind,
     TransactionStatus,
 )
-from appfin.domain.errors import ValidationError
+from appfin.domain.errors import BusinessRuleError, ValidationError
 from appfin.domain.money import Money
 from appfin.domain.validation import (
     clean_document,
@@ -34,6 +39,8 @@ from appfin.domain.validation import (
 
 COMPANY_ID = "company"
 MAX_INSTALLMENTS = 360
+MAX_PROFILE_LINES = 2000
+_SHA256_HEX = re.compile(r"[0-9a-f]{64}")
 _UF = frozenset(
     [
         "AC",
@@ -79,6 +86,11 @@ def _require_id(value: str, field_name: str = "id", *, allow_new: bool = False) 
         return
     if not isinstance(value, str) or not 1 <= len(value) <= 64:
         raise ValidationError(field_name, "Identificador inválido.")
+
+
+def _require_sha256(value: str | None, field_name: str) -> None:
+    if not isinstance(value, str) or not _SHA256_HEX.fullmatch(value):
+        raise ValidationError(field_name, "Identificador de importação inválido.")
 
 
 def _clean_phone(value: str, field_name: str) -> str:
@@ -261,6 +273,8 @@ class Transaction:
     installment_number: int | None = None
     transfer_id: str | None = None
     import_batch_id: str | None = None
+    # Identidade da célula da planilha (SHA-256 em hex): a mesma célula nunca entra duas vezes.
+    import_row_key: str | None = None
     version: int = 0
 
     def __post_init__(self) -> None:
@@ -291,6 +305,12 @@ class Transaction:
             1 <= self.installment_number <= MAX_INSTALLMENTS
         ):
             raise ValidationError("installment_number", "Número de parcela inválido.")
+        if self.import_batch_id is not None:
+            _require_id(self.import_batch_id, "import_batch_id")
+        if self.import_row_key is not None:
+            _require_sha256(self.import_row_key, "import_row_key")
+            if self.import_batch_id is None:
+                raise ValidationError("import_row_key", "Célula importada sem lote.")
         _set(
             self,
             "document_number",
@@ -339,3 +359,100 @@ class Receipt:
         _require_id(self.transaction_id, "transaction_id")
         if self.number < 1:
             raise ValidationError("number", "Número de recibo inválido.")
+
+
+# ---------------------------------------------------------------------- importação de planilha
+@dataclass(frozen=True, slots=True)
+class ImportProfile:
+    """Mapeamento salvo de uma planilha: chave normalizada da linha → id da categoria.
+
+    Fica só no banco cifrado: as chaves vêm dos rótulos da planilha e podem conter nomes de
+    pessoas (plano de importação §5.3), por isso nunca vão para código, testes ou logs.
+    """
+
+    id: str
+    name: str
+    layout: ImportLayout = ImportLayout.MONTHLY_MATRIX
+    line_map: Mapping[str, str] = field(default_factory=dict)
+    version: int = 0
+
+    def __post_init__(self) -> None:
+        _require_id(self.id, allow_new=True)
+        _set(self, "name", clean_text(self.name, "name", max_length=60, required=True))
+        if len(self.line_map) > MAX_PROFILE_LINES:
+            raise ValidationError("line_map", f"No máximo {MAX_PROFILE_LINES} linhas por perfil.")
+        cleaned: dict[str, str] = {}
+        for key, category_id in self.line_map.items():
+            line_key = clean_text(key, "line_map", max_length=200, required=True)
+            _require_id(category_id, "line_map")
+            cleaned[line_key] = category_id
+        _set(self, "line_map", MappingProxyType(cleaned))
+
+
+@dataclass(frozen=True, slots=True)
+class ImportCounts:
+    """O que uma confirmação fez (plano de importação §6.2)."""
+
+    created: int = 0
+    replaced: int = 0
+    removed: int = 0
+    skipped: int = 0
+    kept: int = 0  # diferença informada, mas o lançamento alterado no app foi mantido
+
+    def __post_init__(self) -> None:
+        for name in ("created", "replaced", "removed", "skipped", "kept"):
+            value = getattr(self, name)
+            if not isinstance(value, int) or value < 0:
+                raise ValidationError(name, "Contagem inválida.")
+
+
+@dataclass(frozen=True, slots=True)
+class ImportBatch:
+    """Lote de uma importação confirmada. Sem nome de arquivo (pode ter nome de pessoa)."""
+
+    id: str
+    profile_id: str
+    source: ImportSource
+    file_sha256: str
+    period_year: int
+    imported_at: datetime
+    counts: ImportCounts = field(default_factory=ImportCounts)
+    undone_at: datetime | None = None
+    version: int = 0
+
+    def __post_init__(self) -> None:
+        _require_id(self.id, allow_new=True)
+        _require_id(self.profile_id, "profile_id")
+        _require_sha256(self.file_sha256, "file_sha256")
+        if not 2000 <= self.period_year <= 2100:
+            raise ValidationError("period_year", "Ano inválido.")
+        for name in ("imported_at", "undone_at"):
+            moment = getattr(self, name)
+            if moment is not None and moment.tzinfo is None:
+                raise ValidationError(name, "Data e hora sem fuso.")
+
+    @property
+    def is_undone(self) -> bool:
+        return self.undone_at is not None
+
+    def mark_undone(self, at: datetime) -> ImportBatch:
+        if self.is_undone:
+            raise BusinessRuleError("Esta importação já foi desfeita.")
+        return replace(self, undone_at=at)
+
+
+@dataclass(frozen=True, slots=True)
+class ImportReplacement:
+    """Lançamento antigo que o lote excluiu; ``new_transaction_id=None`` = só removeu."""
+
+    batch_id: str
+    old_transaction_id: str
+    new_transaction_id: str | None = None
+
+    def __post_init__(self) -> None:
+        _require_id(self.batch_id, "batch_id")
+        _require_id(self.old_transaction_id, "old_transaction_id")
+        if self.new_transaction_id is not None:
+            _require_id(self.new_transaction_id, "new_transaction_id")
+            if self.new_transaction_id == self.old_transaction_id:
+                raise ValidationError("new_transaction_id", "Substituição para o mesmo lançamento.")

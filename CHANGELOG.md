@@ -18,7 +18,16 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
   regime (caixa ou competência); dali, duplo clique abre a edição do lançamento e o DRE se atualiza.
 - "Exportar" do DRE leva as categorias dos grupos que estiverem expandidos.
 
+### Adicionado (fase 1, incremento 1.7.3)
+- Base da importação de planilhas (ainda sem tela): perfis de mapeamento, lotes de importação com
+  contagens e registro do que cada lote substituiu, para permitir **desfazer**.
+- Cada lançamento importado guarda a identidade da célula de origem: a mesma célula nunca entra
+  duas vezes; editar o lançamento no app não muda essa origem.
+
 ### Alterado
+- Banco de dados: migração 0005 cria as tabelas da importação e reconstrói a de lançamentos para
+  ligar cada lançamento ao seu lote (dados, recibos e índices preservados; backup automático antes).
+  O nome do arquivo importado não é guardado, só o SHA-256.
 - Banco de dados: migração 0004 reconstrói a tabela de categorias para aceitar o novo grupo do DRE
   (dados e referências preservados; backup automático antes).
 

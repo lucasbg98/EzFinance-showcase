@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 
 from appfin.domain.entities import InstallmentGroup, Transaction
@@ -129,7 +129,14 @@ class TransactionService:
                 transaction.contact_id,
                 allow_archived_ids={current.account_id, current.category_id or ""},
             )
-            saved = uow.transactions.update(transaction)
+            # A origem da importação (lote e célula) não muda ao editar no app.
+            saved = uow.transactions.update(
+                replace(
+                    transaction,
+                    import_batch_id=current.import_batch_id,
+                    import_row_key=current.import_row_key,
+                )
+            )
             uow.commit()
         return saved
 

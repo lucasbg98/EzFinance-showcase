@@ -98,3 +98,14 @@ class ReportBasis(StrEnum):
 
     CASH = "cash"
     ACCRUAL = "accrual"
+
+
+class ImportLayout(StrEnum):
+    """Formato da planilha. ``monthly_matrix``: linhas = itens, colunas = meses do ano."""
+
+    MONTHLY_MATRIX = "monthly_matrix"
+
+
+class ImportSource(StrEnum):
+    CSV = "csv"
+    XLSX = "xlsx"

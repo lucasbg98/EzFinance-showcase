@@ -229,3 +229,139 @@ def test_foreign_keys_off_migration_with_broken_reference_rolls_back(tmp_path: P
     assert current_version(connection) == 1
     assert connection.execute("PRAGMA foreign_keys").fetchone()[0] == 1
     connection.close()
+
+
+# ---------------------------------------------------------------------- 0005: importação
+_KEY_A = "a" * 64
+_KEY_B = "b" * 64
+
+
+def _seed_version_4(connection: Connection) -> None:
+    """Banco na versão anterior à 0005: lançamento com recibo (FK que aponta para a tabela)."""
+    _seed_version_3(connection)
+    migrate(connection, available_migrations()[:4])
+    connection.execute(
+        "INSERT INTO receipt (id, number, transaction_id, issued_on, version, created_at, "
+        "updated_at) VALUES ('rc', 1, 'tx', '2026-01-31', 1, ?, ?)",
+        (_NOW, _NOW),
+    )
+
+
+def _indexes(connection: Connection, table: str) -> set[str]:
+    return {row[1] for row in connection.execute(f"PRAGMA index_list({table})")}
+
+
+def _add_batch(connection: Connection, batch_id: str = "bt") -> None:
+    connection.execute(
+        "INSERT INTO import_profile (id, name, layout, line_map, version, created_at, updated_at) "
+        "VALUES ('pf', 'Fluxo de caixa', 'monthly_matrix', '{}', 1, ?, ?)",
+        (_NOW, _NOW),
+    )
+    connection.execute(
+        "INSERT INTO import_batch (id, profile_id, source, file_sha256, period_year, "
+        "created_count, replaced_count, removed_count, skipped_count, kept_count, imported_at, "
+        "version, created_at, updated_at) VALUES (?, 'pf', 'xlsx', ?, 2026, 0, 0, 0, 0, 0, ?, "
+        "1, ?, ?)",
+        (batch_id, "0" * 64, _NOW, _NOW, _NOW),
+    )
+
+
+def _insert_imported(
+    connection: Connection, tx_id: str, key: str, batch: str | None = "bt"
+) -> None:
+    connection.execute(
+        "INSERT INTO financial_transaction (id, kind, description, amount_cents, accrual_date, "
+        "due_date, status, account_id, category_id, import_batch_id, import_row_key, version, "
+        "created_at, updated_at) VALUES (?, 'expense', 'Aluguel', 1000, '2026-02-28', "
+        "'2026-02-28', 'pending', 'acc', 'cat', ?, ?, 1, ?, ?)",
+        (tx_id, batch, key, _NOW, _NOW),
+    )
+
+
+def test_migration_0005_keeps_transactions_receipts_and_indexes(tmp_path: Path) -> None:
+    connection = open_encrypted(tmp_path / "app.db", _dek())
+    _seed_version_4(connection)
+    before = connection.execute("SELECT * FROM financial_transaction ORDER BY id").fetchall()
+    indexes_before = _indexes(connection, "financial_transaction")
+
+    migrate(connection)
+
+    after = connection.execute("SELECT * FROM financial_transaction ORDER BY id").fetchall()
+    columns = [row[1] for row in connection.execute("PRAGMA table_info(financial_transaction)")]
+    key_column = columns.index("import_row_key")
+    assert [row[:key_column] + row[key_column + 1 :] for row in after] == before
+    assert all(row[key_column] is None for row in after)
+    assert _indexes(connection, "financial_transaction") == indexes_before | {
+        "ux_tx_import_row_key"
+    }
+    assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
+    assert connection.execute("PRAGMA foreign_keys").fetchone()[0] == 1
+    with pytest.raises(Exception, match="FOREIGN KEY"):
+        connection.execute("DELETE FROM financial_transaction WHERE id = 'tx'")
+    connection.close()
+
+
+def test_migration_0005_row_key_is_unique_only_among_live_transactions(tmp_path: Path) -> None:
+    connection = open_encrypted(tmp_path / "app.db", _dek())
+    _seed_version_4(connection)
+    migrate(connection)
+    _add_batch(connection)
+    _insert_imported(connection, "t1", _KEY_A)
+
+    with pytest.raises(Exception, match="UNIQUE"):
+        _insert_imported(connection, "t2", _KEY_A)
+
+    connection.execute("UPDATE financial_transaction SET deleted_at = ? WHERE id = 't1'", (_NOW,))
+    _insert_imported(connection, "t2", _KEY_A)  # substituição: o antigo já foi excluído
+    _insert_imported(connection, "t3", _KEY_B)
+    connection.close()
+
+
+@pytest.mark.parametrize(
+    ("key", "batch", "error"),
+    [
+        ("A" * 64, "bt", "CHECK"),  # só hex minúsculo
+        ("a" * 63, "bt", "CHECK"),
+        (_KEY_A, None, "CHECK"),  # célula importada exige lote
+        (_KEY_A, "lote-inexistente", "FOREIGN KEY"),
+    ],
+)
+def test_migration_0005_enforces_import_columns(
+    tmp_path: Path, key: str, batch: str | None, error: str
+) -> None:
+    connection = open_encrypted(tmp_path / "app.db", _dek())
+    _seed_version_4(connection)
+    migrate(connection)
+    _add_batch(connection)
+
+    with pytest.raises(Exception, match=error):
+        _insert_imported(connection, "t1", key, batch)
+    connection.close()
+
+
+def test_migration_0005_import_tables_reject_bad_data(tmp_path: Path) -> None:
+    connection = open_encrypted(tmp_path / "app.db", _dek())
+    migrate(connection)
+    _add_batch(connection)
+
+    with pytest.raises(Exception, match="CHECK"):
+        connection.execute(
+            "INSERT INTO import_profile (id, name, layout, line_map, version, created_at, "
+            "updated_at) VALUES ('p2', 'Outro', 'monthly_matrix', 'não é json', 1, ?, ?)",
+            (_NOW, _NOW),
+        )
+    with pytest.raises(Exception, match="UNIQUE"):
+        connection.execute(
+            "INSERT INTO import_profile (id, name, layout, line_map, version, created_at, "
+            "updated_at) VALUES ('p3', 'FLUXO DE CAIXA', 'monthly_matrix', '{}', 1, ?, ?)",
+            (_NOW, _NOW),
+        )
+    with pytest.raises(Exception, match="CHECK"):
+        connection.execute(
+            "UPDATE import_batch SET file_sha256 = 'nome-do-arquivo.xlsx' WHERE id = 'bt'"
+        )
+    with pytest.raises(Exception, match="FOREIGN KEY"):
+        connection.execute(
+            "INSERT INTO import_replacement (batch_id, old_transaction_id) VALUES ('bt', 'nada')"
+        )
+    connection.close()
