@@ -66,6 +66,9 @@ def build_stylesheet() -> str:
     }}
     QPushButton#primary:hover {{ background: {t["primary_hover"]}; }}
     QPushButton:disabled {{ color: {t["text_muted"]}; background: {t["background"]}; }}
+    QPushButton#primary:disabled {{
+        color: {t["text_muted"]}; background: {t["background"]}; border: 1px solid {t["border"]};
+    }}
     QToolBar {{
         background: {t["surface"]}; border: none; border-bottom: 1px solid {t["border"]};
         spacing: 6px; padding: 4px 8px;

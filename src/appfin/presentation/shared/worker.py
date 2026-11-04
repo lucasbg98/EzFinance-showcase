@@ -42,3 +42,16 @@ def run_in_background(
     signals.succeeded.connect(signals.deleteLater)
     signals.failed.connect(signals.deleteLater)
     QThreadPool.globalInstance().start(_Task(function, signals))
+
+
+# Executor injetável: as telas recebem um ``Runner`` para os testes poderem rodar tudo em sequência.
+Runner = Callable[[Callable[[], Any], Callable[[Any], None], Callable[[Exception], None]], None]
+
+
+def qt_runner(parent: QObject) -> Runner:
+    def run(
+        work: Callable[[], Any], ok: Callable[[Any], None], fail: Callable[[Exception], None]
+    ) -> None:
+        run_in_background(work, ok, fail, parent=parent)
+
+    return run

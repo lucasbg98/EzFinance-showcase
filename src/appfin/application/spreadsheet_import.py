@@ -435,6 +435,10 @@ class _Planner:
         self.profile_id = self.profile.id if self.profile else new_profile_id
         self.categories = uow.categories.list(include_archived=True)
         self.by_id = {category.id: category for category in self.categories}
+        self.by_name: dict[str, list[Category]] = defaultdict(list)  # nome normalizado → ativas
+        for category in self.categories:
+            if not category.archived:
+                self.by_name[normalize_label(category.name)].append(category)
         self.issues: list[Issue] = list(self.reading.issues)
         self.lines: list[PreviewLine] = []
 
@@ -565,12 +569,7 @@ class _Planner:
         return category is not None and not category.archived and category.accepts(kind)
 
     def _find_category(self, name: str, kind: TransactionKind, group: DreGroup) -> Category | None:
-        wanted = normalize_label(name)
-        matches = [
-            c
-            for c in self.categories
-            if not c.archived and c.accepts(kind) and normalize_label(c.name) == wanted
-        ]
+        matches = [c for c in self.by_name.get(normalize_label(name), ()) if c.accepts(kind)]
         matches.sort(key=lambda c: (self.dre_group_of(c) != group, c.is_group))
         return matches[0] if matches else None
 

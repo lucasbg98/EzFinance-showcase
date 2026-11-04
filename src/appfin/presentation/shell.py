@@ -25,6 +25,7 @@ from appfin.presentation.features.company.view import CompanyForm
 from appfin.presentation.features.contacts.view import ContactsPage
 from appfin.presentation.features.dashboard.view import DashboardPage
 from appfin.presentation.features.reports.view import ReportsPage
+from appfin.presentation.features.spreadsheet_import.view import SpreadsheetImportPage
 from appfin.presentation.features.transactions.view import payables_page, receivables_page
 from appfin.presentation.shared.ui.forms import plain_label
 from appfin.presentation.workspace import Workspace
@@ -52,6 +53,7 @@ SECTIONS: list[tuple[str, str, PageFactory]] = [
     ("receivables", "Contas a receber", receivables_page),
     ("payables", "Contas a pagar", payables_page),
     ("reports", "Relatórios e DRE", ReportsPage),
+    ("import", "Importar planilha", SpreadsheetImportPage),
     ("contacts", "Contatos", ContactsPage),
     ("categories", "Categorias", CategoriesPage),
     ("accounts", "Contas", AccountsPage),

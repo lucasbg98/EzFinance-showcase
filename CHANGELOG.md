@@ -45,6 +45,18 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
   remove o que foi zerado (cada substituição/remoção pode ser desmarcada).
 - Bancos anteriores à 1.7.1: a prévia oferece mover as categorias padrão para o grupo novo do DRE.
 
+### Adicionado (fase 1, incremento 1.7.6)
+- Tela **Importar planilha** no menu lateral, com assistente em passos: arquivo (`.xlsx`
+  recomendado ou `.csv`), período e conta de destino (situação de cada mês ajustável), categorias
+  (só quando há algo a decidir), prévia com a conferência "Planilha versus app" e os problemas
+  linha a linha, e confirmação.
+- Na prévia, duplo clique numa substituição ou remoção mantém o lançamento que está no app.
+- Aba **Histórico** com as importações (só contagens) e **Desfazer**; quando não dá para
+  desfazer, a tela lista os lançamentos alterados no app.
+
+### Corrigido
+- Botões principais desativados agora aparecem desativados (o tema mostrava a cor de ativo).
+
 ### Segurança
 - Planilha tratada como arquivo hostil: limites de tamanho, de conteúdo descompactado (*zip bomb*),
   de abas, linhas, colunas, células e comentários; XML só com `defusedxml` (nova dependência:

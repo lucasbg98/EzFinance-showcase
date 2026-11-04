@@ -9,12 +9,20 @@ realizados (com receita) e set a dez só com algumas despesas fixas (projeção)
 from __future__ import annotations
 
 import csv
+import hashlib
 import random
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
-from appfin.domain.spreadsheet_import.grid import CellComment, CellError, CellValue, Sheet
+from appfin.domain.enums import ImportSource
+from appfin.domain.spreadsheet_import.grid import (
+    CellComment,
+    CellError,
+    CellValue,
+    Sheet,
+    SpreadsheetFile,
+)
 
 MONTH_HEADERS = (
     "JANEIRO ",
@@ -349,3 +357,36 @@ def write_csv(
         for row in rows:
             writer.writerow([pt_br(value) for value in row[1:]])
     return path
+
+
+# ---------------------------------------------------------------------- arquivo já lido (sem disco)
+UNKNOWN_LABEL = "ITEM NOVO DESCONHECIDO"
+
+
+def sheet_file(fixture: CashFlowFixture, name: str = "JAN26") -> SpreadsheetFile:
+    """O que o leitor seguro entregaria para a planilha (SHA-256 do conteúdo, como no leitor)."""
+    sheet = fixture.sheet(name)
+    digest = hashlib.sha256(repr((sheet.rows, sorted(sheet.comments.items()))).encode()).hexdigest()
+    return SpreadsheetFile(ImportSource.XLSX, digest, (sheet,))
+
+
+def with_unknown_line(fixture: CashFlowFixture, label: str = UNKNOWN_LABEL) -> SpreadsheetFile:
+    """Linha nova (sem regra) no bloco "Diversos" com R$ 25,00 em abril, e os totais ajustados."""
+    file = sheet_file(fixture)
+    sheet = file.sheets[0]
+    rows = [list(row) for row in sheet.rows]
+    april = FIRST_MONTH_COLUMN + 3
+
+    def bump(row_label: str, delta: int) -> None:
+        row = next(row for row in rows if row[LABEL_COLUMN] == row_label)
+        current = row[april]
+        row[april] = (current if isinstance(current, Decimal) else Decimal(0)) + delta
+
+    bump("TOTAL DIVERSOS ", 25)
+    bump("CUSTOS VARIÁVEIS ", 25)
+    bump("LUCRO TOTAL FINAL ", -25)
+    position = next(i for i, row in enumerate(rows) if row[LABEL_COLUMN] == "TOTAL DIVERSOS ")
+    new_row: list[CellValue] = [None, label, *[None] * 12]
+    new_row[april] = Decimal(25)
+    rows.insert(position + 1, new_row)
+    return replace(file, sheets=(Sheet(sheet.name, tuple(tuple(r) for r in rows)),))

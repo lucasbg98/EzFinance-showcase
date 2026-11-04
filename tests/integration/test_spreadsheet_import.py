@@ -7,11 +7,9 @@ categorias padrão, backup antes, falha no meio e o DRE do app versus a planilha
 
 from __future__ import annotations
 
-import hashlib
 import logging
 from dataclasses import replace
 from datetime import UTC, date, datetime
-from decimal import Decimal
 from pathlib import Path
 
 import pytest
@@ -33,7 +31,6 @@ from appfin.domain.entities import Receipt, Transaction
 from appfin.domain.enums import (
     CategoryKind,
     DreGroup,
-    ImportSource,
     PaymentMethod,
     ReportBasis,
     TransactionKind,
@@ -41,14 +38,25 @@ from appfin.domain.enums import (
 )
 from appfin.domain.errors import BusinessRuleError, ConcurrencyConflictError
 from appfin.domain.income_statement import LineType
-from appfin.domain.spreadsheet_import.grid import CellValue, Sheet, SpreadsheetFile
+from appfin.domain.spreadsheet_import.grid import SpreadsheetFile
 from appfin.domain.spreadsheet_import.monthly_matrix import MonthStatus
 from appfin.domain.spreadsheet_import.reconcile import ReconcileAction
 from appfin.infrastructure.ids import uuid7
 from appfin.infrastructure.importers.safe_reader import read_spreadsheet
 from appfin.infrastructure.system import LoggingEventLog
 from tests.integration.conftest import App
-from tests.spreadsheet_fixtures import CashFlowFixture, cash_flow_fixture, write_csv, write_xlsx
+from tests.spreadsheet_fixtures import (
+    CashFlowFixture,
+    cash_flow_fixture,
+    write_csv,
+    write_xlsx,
+)
+from tests.spreadsheet_fixtures import (
+    sheet_file as _file,
+)
+from tests.spreadsheet_fixtures import (
+    with_unknown_line as _with_unknown_line,
+)
 
 YEAR = 2026
 NOW = datetime(2026, 9, 15, 12, tzinfo=UTC)
@@ -73,12 +81,6 @@ def backups() -> Backups:
 @pytest.fixture
 def service(app: App, backups: Backups) -> SpreadsheetImportService:
     return SpreadsheetImportService(app.uow, uuid7, lambda: NOW, backups, LoggingEventLog())
-
-
-def _file(fixture: CashFlowFixture, name: str = "JAN26") -> SpreadsheetFile:
-    sheet = fixture.sheet(name)
-    digest = hashlib.sha256(repr((sheet.rows, sorted(sheet.comments.items()))).encode()).hexdigest()
-    return SpreadsheetFile(ImportSource.XLSX, digest, (sheet,))
 
 
 def _account(app: App) -> str:
@@ -380,26 +382,6 @@ def test_excluded_month_is_neither_imported_nor_removed(
 
 
 # ---------------------------------------------------------------------- linha desconhecida
-def _with_unknown_line(fixture: CashFlowFixture) -> SpreadsheetFile:
-    """Linha nova (sem regra) no bloco "Diversos" com R$ 25,00 em abril, e os totais ajustados."""
-    sheet = _file(fixture).sheets[0]
-    rows = [list(row) for row in sheet.rows]
-    april = 2 + 3
-
-    def bump(label: str, delta: int) -> None:
-        row = next(row for row in rows if row[1] == label)
-        row[april] = (row[april] or Decimal(0)) + delta  # type: ignore[operator]
-
-    bump("TOTAL DIVERSOS ", 25)
-    bump("CUSTOS VARIÁVEIS ", 25)
-    bump("LUCRO TOTAL FINAL ", -25)
-    position = next(i for i, row in enumerate(rows) if row[1] == "TOTAL DIVERSOS ")
-    new_row: list[CellValue] = [None, "ITEM NOVO DESCONHECIDO", *[None] * 12]
-    new_row[april] = Decimal(25)
-    rows.insert(position + 1, new_row)
-    return replace(_file(fixture), sheets=(Sheet(sheet.name, tuple(tuple(r) for r in rows)),))
-
-
 def test_unknown_line_blocks_until_a_category_is_chosen(
     app: App, service: SpreadsheetImportService
 ) -> None:
