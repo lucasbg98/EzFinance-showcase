@@ -4,6 +4,11 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 
 ## [Não lançado]
 
+## [0.7.0] — 04/11/2026
+
+Importação da planilha "Fluxo de caixa" do consultório e DRE detalhável (fase 1, incremento 1.7).
+Guia de uso: `docs/IMPORTACAO.md`.
+
 ### Adicionado (fase 1, incremento 1.7.1)
 - DRE com o grupo **Investimentos** (depois do resultado operacional) e o subtotal
   "Resultado após investimentos".
@@ -69,6 +74,7 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
   O nome do arquivo importado não é guardado, só o SHA-256.
 - Banco de dados: migração 0004 reconstrói a tabela de categorias para aceitar o novo grupo do DRE
   (dados e referências preservados; backup automático antes).
+- Autoteste do executável (`--self-test`) também lê uma planilha mínima pelo leitor seguro.
 
 ## [0.6.0] — 03/11/2026
 

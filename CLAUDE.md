@@ -9,7 +9,8 @@ usado por uma pessoa. **Segurança é a prioridade nº 1** (dados financeiros e 
   segurança, roadmap. Em caso de dúvida ou conflito, ele vence; se algo não estiver lá, **pergunte**.
 - `docs/ANALISE_SKILLS.md` — decisões D1–D8 que alinharam as skills ao projeto.
 - Skills em `.claude/skills/`: `security`, `backend-architecture`, `repository-pattern`,
-  `frontend-architecture`, `concurrency`, `performance`, `clean-code`, `dominio-consultorio`.
+  `frontend-architecture`, `concurrency`, `performance`, `clean-code`, `dominio-consultorio`,
+  `importacao-planilha`.
   Carregue as relevantes antes de mexer na área correspondente.
 
 ## Regras que valem sempre

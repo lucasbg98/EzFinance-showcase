@@ -167,4 +167,4 @@ Não sugiro criar mais skills além dessas. Mais regras = mais contexto e menos 
    conflitos (D6), pastas por funcionalidade (D7), "Ocultar valores" no MVP (D8), sem `owner_id` local (D3).
 4. **`CLAUDE.md`** criado na raiz.
 
-Pendentes: skill `importacao-planilha` (quando chegar o modelo) e skill `release` (fase 0).
+Pendente: skill `release` (fase 0). A skill `importacao-planilha` foi criada na v0.7.0.

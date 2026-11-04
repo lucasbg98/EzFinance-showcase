@@ -63,6 +63,9 @@ Estrutura do DRE: Receita bruta − Deduções − Impostos = **Receita líquida
 **Lucro bruto** − Despesas operacionais − Despesas comerciais = **Resultado operacional** − Investimentos =
 **Resultado após investimentos** ± Diversos = **Resultado do período**. Transferências nunca entram.
 
+A planilha "Fluxo de caixa" do consultório é importada pela tela Importar planilha (skill
+`importacao-planilha`): o DRE do app precisa bater com ela em Impostos, Investimentos e Resultado.
+
 ## Regime de caixa × competência
 
 - DRE e relatório por categoria têm um **seletor "Caixa | Competência"** na hora de visualizar.

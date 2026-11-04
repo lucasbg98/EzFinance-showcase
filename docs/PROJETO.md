@@ -443,7 +443,7 @@ usam o vencimento. 🔶 Validar essa regra com o contador.
 | T1 | **Máquina roubada** | I | SQLCipher (AES-256); DEK nunca gravada em claro; chave derivada por **Argon2id** (~1 s); **BitLocker** obrigatório no checklist de instalação; backups cifrados | Força bruta offline contra senha fraca → senha forte obrigatória (≥ 12 caracteres ou frase-senha, medidor de força) |
 | T2 | **Acesso oportunista no consultório** | I, T | **Bloqueio automático** (padrão 3 min no consultório), ao bloquear o Windows e ao suspender; atalho para bloquear na hora (`Ctrl+L`); conta do Windows própria; botão global **"Ocultar valores"** (`R$ •••••`) já no MVP (D8), com opção de abrir o app com os valores ocultos | Alguém usando o app desbloqueado nos minutos antes do bloqueio |
 | T3 | **Malware local** | I, T, E | Bloqueio limpa as chaves e a interface; nenhum arquivo temporário em claro; exportações (PDF/Excel/CSV) com aviso de que saem sem cifra; área de transferência limpa em 30 s | **Não há defesa completa** contra malware com o usuário logado enquanto o app está desbloqueado. Mitigação real: Windows atualizado, Defender, sem rodar como administrador |
-| T4 | **Planilha maliciosa** (macro, *zip bomb*, *XML bomb*, fórmula) | T, D, E | openpyxl **nunca executa macros**; `.xlsm` aceito só para ler valores (com aviso); **defusedxml** contra XXE e *billion laughs*; limites de tamanho do arquivo (ex.: 20 MB), do descompactado e de linhas/colunas; `data_only=True` (lê o valor calculado e ignora a fórmula); a planilha nunca é aberta pelo Excel pelo app; validação de cada célula | Nenhum relevante |
+| T4 | **Planilha maliciosa** (macro, *zip bomb*, *XML bomb*, fórmula) | T, D, E | openpyxl **nunca executa macros**; `.xlsm` aceito só para ler valores (com aviso); **defusedxml** contra XXE e *billion laughs*; limites de tamanho do arquivo (ex.: 20 MB), do descompactado e de linhas/colunas; `data_only=True` (lê o valor calculado e ignora a fórmula); a planilha nunca é aberta pelo Excel pelo app; validação de cada célula; bytes NUL e caracteres de controle recusados; comentários lidos à parte, também com `defusedxml` e limites; nome do arquivo e conteúdo nunca no log (teste canário); prévia obrigatória, gravação numa transação com backup antes e lote reversível (v0.7.0, ADR-0009) | Nenhum relevante |
 | T5 | **Credencial vazada** | S | MFA TOTP obrigatório (RLS exige aal2); senha de login **derivada** da senha mestra (o servidor nunca a vê); sem a senha mestra o atacante só obtém texto cifrado; alerta de novo dispositivo; revogação de dispositivos | Senha mestra + TOTP vazados juntos |
 | T6 | **Acesso indevido ao backend** | I, T, D | E2EE; AEAD com AAD impede trocar registros; RLS *deny-by-default* testada; backups também **fora** do Supabase | Metadados (volume, horários); apagamento remoto → recuperação local |
 | T7 | **Interceptação de rede** | I, T | HTTPS obrigatório, TLS 1.2+, validação estrita de certificados (`truststore`); conteúdo já cifrado | — |
@@ -573,9 +573,9 @@ vale mais. Pontos principais (🔶 validar com o contador ou um advogado):
 ## 8. Carga inicial e importação de planilhas Excel
 
 🗣️ **Não haverá migração do app de referência.** O app começa do zero. A entrada de dados em massa é por **planilha
-Excel**. 🗣️ O modelo chega depois. Por isso este documento define só a **estrutura básica** (genérica,
-abaixo). Quando a planilha chegar, entra uma subseção 8.4 "Perfil da planilha do consultório", com o
-mapeamento exato, as regras de conversão e os casos especiais.
+Excel**. As seções 8.1 a 8.3 descrevem a estrutura **genérica** (planilha em formato de lista, com
+mapeamento de colunas): 🗣️ ela fica para depois (P15 de plano de importação). O que a v0.7.0
+implementa é o **perfil da planilha do consultório** (matriz mensal), na seção 8.4.
 
 ### 8.1 Assistente de importação
 1. **Escolher o arquivo** (`.xlsx`; `.xlsm` só valores, com aviso; `.csv`). 🔶 `.xls` antigo (Excel 97–2003) só se o seu arquivo for nesse formato (P12).
@@ -597,6 +597,33 @@ mescladas, linhas vazias, fórmulas, textos com `=CMD(...)`, arquivos corrompido
 **Nenhuma planilha real com dados de pacientes entra no repositório.** Para testar com a sua planilha,
 envie uma versão **com dados fictícios** ou só com o cabeçalho e 2–3 linhas inventadas.
 
+### 8.4 Perfil da planilha do consultório (v0.7.0)
+
+Detalhes, decisões (🗣️ P1–P21) e a análise da planilha: plano de importação. Guia de uso:
+`docs/IMPORTACAO.md`. Regras para o código: skill `importacao-planilha`.
+
+- **Formato:** "Fluxo de caixa" em **matriz mensal** (linhas = itens; colunas = janeiro a dezembro),
+  no formato de margem de contribuição. `.xlsx` recomendado (traz os comentários das células);
+  `.csv` do Excel aceito (UTF-8 ou Windows-1252, separador `;`); `.xlsm` só valores; `.xls` recusado.
+- **Estrutura:** reconhecida pelos rótulos genéricos das linhas de total (âncoras) e pelos meses do
+  cabeçalho, nunca por posição fixa ou negrito (`domain/spreadsheet_import/cash_flow_layout.py`).
+- **Lançamentos:** cada célula com valor de uma linha de detalhe = 1 lançamento no **último dia do
+  mês** (competência = vencimento); **pago** nos meses realizados (com receita) e **pendente** nos de
+  projeção. Comentário da célula → observação. Linhas que a planilha subtrai (devolução de crédito,
+  saídas não operacionais) viram despesa.
+- **Conferência antes de gravar:** os 11 totais da planilha, mês a mês, e o DRE do app (Impostos,
+  Investimentos e Resultado do período) contra as linhas correspondentes. Erro em célula, total que
+  não confere ou Resultado diferente **bloqueiam** (sem importação parcial).
+- **Categorias:** perfil padrão por palavra-chave e por bloco, só com rótulos genéricos; linha
+  desconhecida pede uma escolha **uma vez** (salva no perfil, no banco cifrado). Nomes de pessoas e
+  fornecedores nunca ficam no código.
+- **Reimportação:** cada célula tem identidade única (`import_row_key`); reimportar não duplica,
+  substitui o que mudou, remove o que zerou e **mantém o que foi alterado no app** (versão ou recibo).
+- **Desfazer:** por lote, restaurando o que ele substituiu; só a importação mais recente de cada ano;
+  bloqueado se algum lançamento do lote foi mexido no app.
+- **Segurança:** a planilha é arquivo hostil (limites, `defusedxml`, só valores); backup automático
+  antes de gravar; tudo numa transação; nada da planilha vai para log (só eventos e contagens).
+
 ---
 
 ## 9. Estrutura de pastas do projeto
@@ -610,6 +637,7 @@ AppFinanceiro/
 │  ├─ PROJETO.md            # este documento
 │  ├─ AMEACAS.md            # modelo de ameaças vivo
 │  ├─ RESTAURACAO.md        # procedimento de restauração testado
+│  ├─ IMPORTACAO.md         # como importar a planilha do consultório
 │  ├─ INSTALACAO.md         # instalar, conferir SHA-256, BitLocker
 │  ├─ INCIDENTES.md         # resposta a incidentes (LGPD)
 │  ├─ RELEASE.md            # checklist de release

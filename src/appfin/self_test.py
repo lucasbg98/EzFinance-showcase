@@ -2,7 +2,8 @@
 
 Rodado pelo script de release logo após o build: garante que o PyInstaller incluiu tudo o que o
 app precisa em produção (cripto, banco cifrado, migrações, interface, cliente de atualização, o
-``root.json`` confiável, os geradores de PDF/Excel e o formato de backup).
+``root.json`` confiável, os geradores de PDF/Excel, o formato de backup e a leitura segura de
+planilhas com ``defusedxml``).
 Retorna 0 se tudo estiver OK. Não toca em dados reais.
 """
 
@@ -19,6 +20,7 @@ def run_self_test() -> int:
         _check_ui_modules()
         _check_exporters()
         _check_backup_format()
+        _check_spreadsheet_import()
     except Exception:  # noqa: BLE001 - qualquer falha = build inválido
         return 1
     return 0
@@ -113,3 +115,32 @@ def _check_backup_format() -> None:
         manifest = stream.read_backup(source, stream.read_header(source), key, restored)
     if manifest != {"ok": True} or restored.getvalue() != b"autoteste":
         raise RuntimeError("formato de backup inválido")
+
+
+def _check_spreadsheet_import() -> None:
+    """Planilha mínima no layout "Fluxo de caixa", gerada em memória (dados fictícios), lida pelo
+    leitor seguro (``defusedxml`` obrigatório) e conferida pela matriz mensal."""
+    import io
+
+    from openpyxl import Workbook
+    from openpyxl.comments import Comment
+
+    from appfin.domain.spreadsheet_import.cash_flow_layout import CASH_FLOW_LAYOUT
+    from appfin.domain.spreadsheet_import.monthly_matrix import read_monthly_matrix
+    from appfin.domain.spreadsheet_import.parse import MONTHS
+    from appfin.infrastructure.importers.safe_reader import read_xlsx_bytes
+
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.append([None, None, *MONTHS])
+    sheet.append([None, "DINHEIRO", 1.5])
+    sheet.cell(2, 3).comment = Comment("Autoteste:\nnota", "Autoteste")
+    for anchor in CASH_FLOW_LAYOUT.anchors:
+        value = 1.5 if anchor.label in ("RECEITA TOTAL", "LUCRO TOTAL FINAL") else None
+        sheet.append([None, anchor.label, value])
+    buffer = io.BytesIO()
+    workbook.save(buffer)
+    reading = read_monthly_matrix(read_xlsx_bytes(buffer.getvalue()).sheets[0], CASH_FLOW_LAYOUT)
+    [line] = reading.lines
+    if not reading.is_valid or line.amounts[0] != 150 or line.comments[0] != "nota":
+        raise RuntimeError("leitura de planilha inválida")
