@@ -32,6 +32,19 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 - Regras de reimportação: célula nova, já importada, alterada (substituir), alterada no app
   (manter) e zerada (remover).
 
+### Adicionado (fase 1, incremento 1.7.5)
+- Casos de uso da importação (ainda sem tela): **prévia** (nada é gravado), **confirmação** (backup
+  automático antes e tudo numa única transação) e **desfazer**, com o histórico de importações.
+- Perfil padrão da planilha "Fluxo de caixa": cada linha ganha uma categoria por regra (aluguel, DAS,
+  FGTS, cartão crédito, cursos…) ou pelo bloco (dentistas, protéticos, material, salários,
+  impostos); linha desconhecida bloqueia até a usuária escolher, e a escolha fica salva para as
+  próximas importações. Categorias que ainda não existem são criadas na confirmação.
+- Conferência "DRE do app × planilha", mês a mês: Impostos, Investimentos e Resultado do período.
+  O "Lucro total final" da planilha também passa a ser conferido (cobre as linhas não operacionais).
+- Reimportar não duplica: substitui o que mudou na planilha, mantém o que foi alterado no app e
+  remove o que foi zerado (cada substituição/remoção pode ser desmarcada).
+- Bancos anteriores à 1.7.1: a prévia oferece mover as categorias padrão para o grupo novo do DRE.
+
 ### Segurança
 - Planilha tratada como arquivo hostil: limites de tamanho, de conteúdo descompactado (*zip bomb*),
   de abas, linhas, colunas, células e comentários; XML só com `defusedxml` (nova dependência:

@@ -33,6 +33,12 @@ ALLOWED_FIELDS: Final = frozenset(
         "schema_version",
         "app_version",
         "reason",
+        # contagens da importação de planilha (só números; nunca o conteúdo)
+        "created",
+        "replaced",
+        "removed",
+        "skipped",
+        "kept",
     }
 )
 _EVENT_PATTERN: Final = re.compile(r"^[a-z][a-z0-9_.]{0,63}$")

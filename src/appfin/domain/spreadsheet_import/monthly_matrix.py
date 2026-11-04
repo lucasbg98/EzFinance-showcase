@@ -54,6 +54,7 @@ class Anchor:
     label: str
     opens: str | None = None  # bloco das linhas de detalhe seguintes (None = nenhum)
     checks: tuple[str, ...] = ()  # blocos cuja soma, mês a mês, deve ser igual a esta linha
+    minus: tuple[str, ...] = ()  # blocos subtraídos nessa conta (ex.: lucro = receitas - custos)
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,7 +74,9 @@ class MatrixLayout:
             raise ValidationError("anchors", "Âncora repetida no layout.")
         referenced = {self.first_block, self.revenue_block}
         for anchor in self.anchors:
-            referenced.update(anchor.checks)
+            referenced.update(anchor.checks, anchor.minus)
+            if anchor.minus and not anchor.checks:
+                raise ValidationError("anchors", "Âncora que só subtrai blocos.")
             if anchor.opens is not None:
                 referenced.add(anchor.opens)
         if not referenced <= set(names):
@@ -356,9 +359,13 @@ def _check_totals(
         row_index = anchor_rows.get(anchor.label)
         if not anchor.checks or row_index is None:
             continue
-        members = [line for line in lines if line.block in anchor.checks]
+        members = [
+            (1 if line.block in anchor.checks else -1, line)
+            for line in lines
+            if line.block in anchor.checks or line.block in anchor.minus
+        ]
         for month, column in enumerate(month_columns, start=1):
-            expected = sum(line.sign * line.amounts[month - 1] for line in members)
+            expected = sum(side * line.sign * line.amounts[month - 1] for side, line in members)
             sheet_cents: int | None
             try:
                 amount = parse_amount(reader.sheet.cell(row_index, column))

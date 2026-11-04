@@ -50,7 +50,7 @@ def test_full_layout_is_recognized_and_all_totals_match() -> None:
     assert len(fixture.sheet().rows) == FIXTURE_ROWS
     assert reading.is_valid, reading.issues
     assert len(reading.lines) == len(fixture.details) == 80
-    assert len(reading.checks) == 10 * 12  # 10 linhas de total conferidas, mês a mês
+    assert len(reading.checks) == 11 * 12  # 11 linhas de total conferidas, mês a mês
     assert reading.months == (MonthStatus.REALIZED,) * 8 + (MonthStatus.PROJECTION,) * 4
     pending = sum(1 for line in reading.lines for cents in line.amounts[8:] if cents)
     assert pending == 28
@@ -163,6 +163,27 @@ def test_total_that_misses_a_line_fails_the_check() -> None:
     failed = {(c.label, c.month) for c in reading.failed_checks}
     assert ("TOTAL DIVERSOS", 10) in failed
     assert not reading.is_valid
+
+
+def test_final_result_checks_the_non_operating_lines() -> None:
+    """Só o "Lucro total final" cobre as entradas e saídas não operacionais."""
+    fixture = cash_flow_fixture()
+    sheet = fixture.sheet()
+    row = _row_of(sheet, "SAÍDAS NÃO OPERACIONAIS ")
+    fixture.detail("non_operating", "SAÍDAS NÃO OPERACIONAIS ").cents[0] += 100
+
+    reading = read_monthly_matrix(_edit(fixture, row, 2, sheet.rows[row - 1][2]), CASH_FLOW_LAYOUT)
+
+    assert reading.months[0] is MonthStatus.REALIZED
+    assert {(c.label, c.month) for c in reading.failed_checks} == {("LUCRO TOTAL FINAL", 1)}
+
+
+def test_exits_are_subtracted_in_the_final_result() -> None:
+    lines = _read(cash_flow_fixture()).lines
+
+    signs = {line.label.strip(): line.sign for line in lines if line.block == "nao_operacionais"}
+
+    assert signs == {"ENTRADAS NÃO OPERACIONAIS": 1, "SAÍDAS NÃO OPERACIONAIS": -1}
 
 
 def test_total_without_cached_value_is_an_error() -> None:
@@ -280,3 +301,7 @@ def test_values_outside_a_known_block_are_an_error() -> None:
 def test_layout_must_reference_known_blocks() -> None:
     with pytest.raises(ValidationError):
         MatrixLayout("x", "a", "a", (Block("a"),), (Anchor("TOTAL", checks=("b",)),))
+    with pytest.raises(ValidationError):
+        MatrixLayout("x", "a", "a", (Block("a"),), (Anchor("TOTAL", checks=("a",), minus=("b",)),))
+    with pytest.raises(ValidationError):
+        MatrixLayout("x", "a", "a", (Block("a"),), (Anchor("TOTAL", minus=("a",)),))

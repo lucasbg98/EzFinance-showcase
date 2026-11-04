@@ -11,6 +11,7 @@ from appfin.application.catalog import CatalogService
 from appfin.application.receipts import ReceiptService
 from appfin.application.reports import ReportService
 from appfin.application.session import AppSession
+from appfin.application.spreadsheet_import import SpreadsheetImportService
 from appfin.application.transactions import TransactionService
 from appfin.infrastructure.backup.engine import FileBackupEngine, complete_pending_restore
 from appfin.infrastructure.crypto.kdf import MINIMUM_SECURE_PARAMS, PRODUCTION_PARAMS, KdfParams
@@ -77,17 +78,30 @@ def build_app(config: AppConfig, today: Callable[[], date] | None = None) -> App
         def uow() -> SqlUnitOfWork:
             return SqlUnitOfWork(connection, clock.now)
 
+        backups = BackupService(
+            session.create_backup,
+            session.prepare_restore,
+            uow,
+            config.paths.backup_dir,
+            clock.now,
+        )
+
+        def audit(event: str, outcome: str) -> None:
+            store.record_audit(event, outcome, clock.now())
+
         return Workspace(
             catalog=CatalogService(uow, uuid7),
             transactions=TransactionService(uow, uuid7, today),
             reports=ReportService(lambda: SqlReportQueries(connection), today),
             receipts=ReceiptService(uow, uuid7, today),
-            backups=BackupService(
-                session.create_backup,
-                session.prepare_restore,
+            backups=backups,
+            imports=SpreadsheetImportService(
                 uow,
-                config.paths.backup_dir,
+                uuid7,
                 clock.now,
+                backup=lambda: backups.backup_now("before_import"),
+                events=LoggingEventLog(),
+                audit=audit,
             ),
             visibility=visibility,
             today=today,

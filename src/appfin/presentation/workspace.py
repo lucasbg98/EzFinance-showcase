@@ -11,6 +11,7 @@ from appfin.application.backup import BackupService
 from appfin.application.catalog import CatalogService
 from appfin.application.receipts import ReceiptService
 from appfin.application.reports import ReportService
+from appfin.application.spreadsheet_import import SpreadsheetImportService
 from appfin.application.transactions import TransactionService
 from appfin.presentation.shared.formatting import ValuesVisibility
 
@@ -60,6 +61,7 @@ class Workspace:
     reports: ReportService
     receipts: ReceiptService
     backups: BackupService
+    imports: SpreadsheetImportService
     visibility: ValuesVisibility
     today: Callable[[], date]
     app: AppControl = field(default_factory=DetachedAppControl)

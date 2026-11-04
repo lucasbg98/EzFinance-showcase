@@ -5,7 +5,9 @@ As linhas de detalhe são reconhecidas pelo bloco em que estão; a categoria vem
 
 Conferência: cada total abaixo deve ser igual à soma das linhas de detalhe dos blocos indicados,
 mês a mês (a linha "Devolução de crédito" é subtraída da receita, como na fórmula da planilha).
-Indicadores (margem, %, lucros, ponto de equilíbrio) servem só para delimitar blocos.
+O "Lucro total final" confere tudo (receitas menos todos os custos, mais as entradas e menos as
+saídas não operacionais): é a única conferência que cobre o bloco não operacional. Os demais
+indicadores (margem, %, lucros intermediários, ponto de equilíbrio) só delimitam blocos.
 """
 
 from __future__ import annotations
@@ -24,6 +26,17 @@ INVESTMENTS = "investimentos"
 NON_OPERATING = "nao_operacionais"
 
 CREDIT_REFUND = "DEVOLUCAO DE CREDITO"
+NON_OPERATING_EXITS = "SAIDAS NAO OPERACIONAIS"
+EXPENSE_BLOCKS = (
+    DENTISTS,
+    PROSTHETICS,
+    MISCELLANEOUS,
+    DENTAL_SUPPLIES,
+    FIXED,
+    SALARIES,
+    TAXES,
+    INVESTMENTS,
+)
 
 CASH_FLOW_LAYOUT = MatrixLayout(
     name="Fluxo de caixa (matriz mensal)",
@@ -39,7 +52,7 @@ CASH_FLOW_LAYOUT = MatrixLayout(
         Block(SALARIES),
         Block(TAXES),
         Block(INVESTMENTS),
-        Block(NON_OPERATING),
+        Block(NON_OPERATING, subtract=frozenset({NON_OPERATING_EXITS})),
     ),
     anchors=(
         Anchor("RECEITA TOTAL", checks=(REVENUE,)),
@@ -59,7 +72,7 @@ CASH_FLOW_LAYOUT = MatrixLayout(
         Anchor("LUCRO ANTES DOS INVESTIMENTOS", opens=INVESTMENTS),
         Anchor("INVESTIMENTOS", checks=(INVESTMENTS,)),
         Anchor("LUCRO OPERACIONAL", opens=NON_OPERATING),
-        Anchor("LUCRO TOTAL FINAL"),
+        Anchor("LUCRO TOTAL FINAL", checks=(REVENUE, NON_OPERATING), minus=EXPENSE_BLOCKS),
         Anchor("PONTO DE EQUILIBRIO"),
     ),
 )
