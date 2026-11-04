@@ -16,6 +16,9 @@ dependencies = [
     "tufup==0.10.0",               # atualizações assinadas (TUF)
     "reportlab==5.0.1",            # recibo em PDF
     "openpyxl==3.1.5",             # exportação (e importação, 1.7) de planilhas Excel
+    # XML seguro para o openpyxl e para a leitura dos comentários (XXE, "billion laughs"):
+    # o openpyxl usa defusedxml automaticamente quando instalado. Sem dependências; padrão de mercado.
+    "defusedxml==0.7.1",
 ]
 
 [project.scripts]
@@ -86,7 +89,7 @@ packages = ["appfin"]
 warn_unreachable = true
 
 [[tool.mypy.overrides]]
-module = ["sqlcipher3.*", "zxcvbn.*", "nacl.*", "tufup.*", "reportlab.*", "openpyxl.*"]
+module = ["sqlcipher3.*", "zxcvbn.*", "nacl.*", "tufup.*", "reportlab.*", "openpyxl.*", "defusedxml.*"]
 ignore_missing_imports = true
 
 # ---------------------------------------------------------------- pytest

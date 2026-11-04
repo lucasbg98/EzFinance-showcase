@@ -24,6 +24,20 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 - Cada lançamento importado guarda a identidade da célula de origem: a mesma célula nunca entra
   duas vezes; editar o lançamento no app não muda essa origem.
 
+### Adicionado (fase 1, incremento 1.7.4)
+- Leitura segura de planilhas (ainda sem tela): `.xlsx` (recomendado, traz os comentários das
+  células) e `.csv` do Excel (UTF-8 ou Windows-1252); `.xlsm` só valores; `.xls` antigo recusado.
+- Reconhecimento da planilha "Fluxo de caixa" (matriz mensal): blocos, linhas repetidas, meses
+  realizados × projeção e **conferência de todos os totais** da planilha, mês a mês.
+- Regras de reimportação: célula nova, já importada, alterada (substituir), alterada no app
+  (manter) e zerada (remover).
+
+### Segurança
+- Planilha tratada como arquivo hostil: limites de tamanho, de conteúdo descompactado (*zip bomb*),
+  de abas, linhas, colunas, células e comentários; XML só com `defusedxml` (nova dependência:
+  bloqueia XXE e *billion laughs*); fórmulas e macros nunca executadas; nada da planilha (nem o
+  nome do arquivo) vai para log.
+
 ### Alterado
 - Banco de dados: migração 0005 cria as tabelas da importação e reconstrói a de lançamentos para
   ligar cada lançamento ao seu lote (dados, recibos e índices preservados; backup automático antes).
