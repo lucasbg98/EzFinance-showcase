@@ -78,13 +78,6 @@ uv run ruff check . && uv run mypy                 # lint e tipagem estrita
 APPFIN_DATA_DIR=./local-data uv run appfin         # abre o app com uma pasta de dados de teste
 ```
 
-## Desenvolvimento assistido por IA
-
-O projeto foi desenvolvido com o apoio do [Claude Code](https://claude.com/claude-code), guiado por
-regras de projeto versionadas: [`CLAUDE.md`](CLAUDE.md) e as *skills* em
-[`.claude/skills/`](.claude/skills/) (segurança, arquitetura, repositórios, concorrência,
-desempenho, domínio). As decisões, revisões e validações são do autor.
-
 ## Licença
 
 Todos os direitos reservados. O código está disponível para leitura e avaliação; uso, cópia ou
