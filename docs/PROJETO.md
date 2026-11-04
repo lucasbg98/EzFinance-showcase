@@ -4,7 +4,7 @@
 > **v0.3:** consultório **PJ**; DRE com **seletor caixa/competência** (novo campo `accrual_date`);
 > uma única máquina até a fase 2; importação Excel com estrutura genérica até chegar o modelo;
 > análise das skills do projeto em `docs/ANALISE_SKILLS.md`.
-> **Nome:** "EzFinance" (🗣️ 04/11/2026; antes "AppFinanceiro"). Não usar a marca "app de referência". O nome
+> **Nome:** "EzFinance" (🗣️ 04/11/2026; antes "AppFinanceiro"). Não usar a marca do app de referência. O nome
 > antigo continua só em identificadores técnicos: pasta de dados, nome nas atualizações assinadas,
 > `AppId` do instalador, pacote `appfin` e variáveis `APPFIN_*`.
 > **Mudanças desde a v0.1:** novo contexto de uso (consultório odontológico), stack trocada para
@@ -762,7 +762,7 @@ recuperação; BitLocker ativo no PC do consultório; checklist de release 100 %
 Fluxo de caixa; relatório PDF das listagens; **sincronização E2EE** (Supabase + MFA + dispositivos);
 transferências; recorrências (aluguel, contador…); lembretes de vencimento (notificação do Windows);
 lista "Conflitos para revisar" (D6); tema escuro; atalhos.
-**Pronto quando:** todas as linhas MVP e v2 da seção 2.4 estão feitas; 2 máquinas sincronizam com edição
+**Pronto quando:** todas as funcionalidades MVP e v2 do escopo estão feitas; 2 máquinas sincronizam com edição
 offline sem perda; testes de RLS cobrem 100 % das tabelas; o modelo de ameaças foi revisado.
 
 ### Fase 3 — Personalizações

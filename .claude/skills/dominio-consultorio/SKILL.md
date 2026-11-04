@@ -8,7 +8,7 @@ description: Regras de negócio específicas do consultório odontológico (PJ) 
 O app é a gestão financeira de **um consultório odontológico pequeno, pessoa jurídica**, usada por
 **uma pessoa** (a dentista ou quem cuida do financeiro), num PC que pode ser compartilhado com a
 recepção. **Não** é um app de finanças pessoais e **não** é prontuário clínico.
-Referência: `docs/PROJETO.md` (seções 1, 2.4, 6.5 e 7.12).
+Referência: `docs/PROJETO.md` (seções 1, 6.5 e 7.12).
 
 ## Quem é quem
 

@@ -1,8 +1,9 @@
 """Parcelamento: divisão exata em centavos + datas de vencimento.
 
 - O resto em centavos vai para as primeiras parcelas (``Money.split``).
-- Intervalo em **dias** (como no app de referência) ou em **meses** (mesmo dia do mês). Em meses, o dia é
-  sempre calculado a partir do 1º vencimento: 31/01 → 28/02 → 31/03 (não "deriva" para o dia 28).
+- Intervalo em **dias** (como no app de referência) ou em **meses** (mesmo dia do mês). Em meses,
+  o dia é sempre calculado a partir do 1º vencimento: 31/01 → 28/02 → 31/03 (não "deriva"
+  para o dia 28).
 """
 
 from __future__ import annotations

@@ -12,12 +12,13 @@ controles estão em `docs/PROJETO.md` §7; as regras obrigatórias de desenvolvi
 - Logs com lista de campos permitidos — nenhum dado financeiro ou pessoal.
 - Sem telemetria.
 - Dependências travadas com hashes (`uv.lock`), varridas por `pip-audit`; SAST (Bandit, ruff `S`, CodeQL).
-- Atualizações assinadas (TUF/tufup) — em implementação na fase 0.
+- Atualizações assinadas (TUF/tufup); a hospedagem dos pacotes entra na fase 2.
 
 ## Como reportar um problema
 
-Repositório privado, mantido por uma pessoa. Problemas de segurança: contate o mantenedor
-diretamente (não abra issue pública). Não inclua dados reais de pacientes ou financeiros no relato.
+Use o relato privado de vulnerabilidades do GitHub (aba **Security → Report a vulnerability**).
+Não abra issue pública para problemas de segurança e não inclua dados reais de pacientes ou
+financeiros no relato.
 
 ## Limitações conhecidas (aceitas)
 
