@@ -52,8 +52,12 @@ _OLE_MAGIC = bytes.fromhex("d0cf11e0a1b11ae1")  # .xls (Excel 97 a 2003) e outro
 _EXCEL_ERRORS = frozenset(
     {"#NULL!", "#DIV/0!", "#VALUE!", "#REF!", "#NAME?", "#NUM!", "#N/A", "#GETTING_DATA"}
 )
-# Controles C0/C1 (exceto TAB, LF e CR): nunca aparecem numa planilha legítima.
-_CONTROL = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]")
+# Controles C0/C1 (exceto TAB, LF e CR): nunca aparecem numa planilha legítima. Definidos por
+# código numérico, como em ``domain/validation.py`` (intervalos explícitos, sem caracteres soltos).
+_CONTROL_RANGES = ((0x00, 0x08), (0x0B, 0x0C), (0x0E, 0x1F), (0x7F, 0x9F))
+_CONTROL = re.compile(
+    "[" + "".join(f"{re.escape(chr(a))}-{re.escape(chr(b))}" for a, b in _CONTROL_RANGES) + "]"
+)
 _CELL_REF = re.compile(r"([A-Z]{1,3})([0-9]{1,7})")
 
 

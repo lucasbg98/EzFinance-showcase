@@ -345,3 +345,10 @@ def test_trailing_empty_rows_and_columns_are_trimmed(tmp_path: Path) -> None:
     file = read_spreadsheet(path)
 
     assert file.sheets[0].rows == (("a", "1"),)
+
+
+def test_control_characters_refused_are_exactly_c0_and_c1_except_tab_lf_cr() -> None:
+    refused = {code for code in range(0x300) if safe_reader._CONTROL.search(chr(code))}
+    expected = (set(range(0x20)) - {0x09, 0x0A, 0x0D}) | set(range(0x7F, 0xA0))
+
+    assert refused == expected
