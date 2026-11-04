@@ -21,6 +21,8 @@ from appfin.application.read_models import (
     CategoryTotal,
     MonthlyFlow,
     PeriodSummary,
+    StatementCategoryTotal,
+    StatementTransactionsFilter,
     TransactionFilter,
     TransactionRow,
 )
@@ -36,6 +38,19 @@ from appfin.infrastructure.persistence.database import Connection
 
 _LIVE = "t.deleted_at IS NULL"
 _NOT_TRANSFER = "t.kind IN ('income', 'expense')"
+
+
+# Colunas de TransactionRow, na ordem de SqlReportQueries._row. Fragmento fixo, sem dado externo.
+_ROW_SELECT = (
+    "SELECT t.id, t.kind, t.description, t.amount_cents, t.accrual_date, t.due_date, "
+    "t.paid_date, t.status, t.account_id, a.name, c.name, co.name, t.payment_method, "
+    "t.document_number, t.installment_number, g.count, t.version "
+    "FROM financial_transaction t "
+    "JOIN account a ON a.id = t.account_id "
+    "LEFT JOIN category c ON c.id = t.category_id "
+    "LEFT JOIN contact co ON co.id = t.contact_id "
+    "LEFT JOIN installment_group g ON g.id = t.installment_group_id"
+)
 
 
 def _escape_like(text: str) -> str:
@@ -79,15 +94,7 @@ class SqlReportQueries:
             conditions.append("t.status = 'pending' AND t.due_date < ?")
             params.append(today.isoformat())
         sql = (
-            "SELECT t.id, t.kind, t.description, t.amount_cents, t.accrual_date, t.due_date, "  # noqa: S608  # nosec B608
-            "t.paid_date, t.status, t.account_id, a.name, c.name, co.name, t.payment_method, "
-            "t.document_number, t.installment_number, g.count, t.version "
-            "FROM financial_transaction t "
-            "JOIN account a ON a.id = t.account_id "
-            "LEFT JOIN category c ON c.id = t.category_id "
-            "LEFT JOIN contact co ON co.id = t.contact_id "
-            "LEFT JOIN installment_group g ON g.id = t.installment_group_id "
-            f"WHERE {' AND '.join(conditions)} "
+            f"{_ROW_SELECT} WHERE {' AND '.join(conditions)} "  # nosec B608
             "ORDER BY t.due_date, t.description COLLATE NOCASE, t.id LIMIT ? OFFSET ?"
         )
         params.extend([criteria.limit, criteria.offset])
@@ -202,3 +209,53 @@ class SqlReportQueries:
         return [
             CategoryTotal(r[0], r[1], TransactionKind(r[2]), int(r[3]), int(r[4])) for r in rows
         ]
+
+    def income_statement_details(
+        self, start: date, end: date, basis: ReportBasis
+    ) -> list[StatementCategoryTotal]:
+        """Totais por categoria com o grupo do DRE de cada uma (mesmas regras do DRE)."""
+        status_clause, date_column = _basis_clause(basis)
+        rows = self._db.execute(
+            "SELECT COALESCE(c.dre_group, p.dre_group), t.category_id, p.name, c.name, "  # noqa: S608  # nosec B608
+            "COALESCE(SUM(CASE WHEN t.kind = 'income' THEN t.amount_cents END), 0), "
+            "COALESCE(SUM(CASE WHEN t.kind = 'expense' THEN t.amount_cents END), 0), count(*) "
+            "FROM financial_transaction t "
+            "LEFT JOIN category c ON c.id = t.category_id "
+            "LEFT JOIN category p ON p.id = c.parent_id "
+            f"WHERE {_LIVE} AND {_NOT_TRANSFER} AND {status_clause} "
+            f"AND {date_column} BETWEEN ? AND ? "
+            "GROUP BY COALESCE(c.dre_group, p.dre_group), t.category_id",
+            (start.isoformat(), end.isoformat()),
+        ).fetchall()
+        return [
+            StatementCategoryTotal(
+                group=DreGroup(r[0]) if r[0] else UNCLASSIFIED,
+                category_id=r[1],
+                group_name=r[2],
+                category_name=r[3],
+                inflow_cents=int(r[4]),
+                outflow_cents=int(r[5]),
+                count=int(r[6]),
+            )
+            for r in rows
+        ]
+
+    def statement_transactions(
+        self, criteria: StatementTransactionsFilter, today: date
+    ) -> list[TransactionRow]:
+        """Lançamentos que formam o total de uma categoria no DRE (mesmas regras do DRE)."""
+        status_clause, date_column = _basis_clause(criteria.basis)
+        params: list[Any] = [criteria.start.isoformat(), criteria.end.isoformat()]
+        if criteria.category_id is None:
+            category_clause = "t.category_id IS NULL"
+        else:
+            category_clause = "t.category_id = ?"
+            params.append(criteria.category_id)
+        params.append(criteria.limit)
+        rows = self._db.execute(
+            f"{_ROW_SELECT} WHERE {_LIVE} AND {_NOT_TRANSFER} AND {status_clause} "  # nosec B608
+            f"AND {date_column} BETWEEN ? AND ? AND {category_clause} "
+            f"ORDER BY {date_column}, t.description COLLATE NOCASE, t.id LIMIT ?",
+            params,
+        ).fetchall()
+        return [self._row(row, today) for row in rows]

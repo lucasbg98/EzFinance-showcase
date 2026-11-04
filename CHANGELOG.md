@@ -11,6 +11,13 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
   encargos, contador, CRO, laudos, tarifas bancárias, taxas de maquininha e controle de esterilização;
   novas categorias "Devoluções a pacientes" e o grupo "Investimentos".
 
+### Adicionado (fase 1, incremento 1.7.2)
+- DRE detalhável: duplo clique (ou Enter) num grupo mostra as categorias dele, com valor e % da
+  receita bruta; "Expandir tudo" e "Recolher tudo".
+- Duplo clique numa categoria abre a lista dos lançamentos que formam o valor, no mesmo período e
+  regime (caixa ou competência); dali, duplo clique abre a edição do lançamento e o DRE se atualiza.
+- "Exportar" do DRE leva as categorias dos grupos que estiverem expandidos.
+
 ### Alterado
 - Banco de dados: migração 0004 reconstrói a tabela de categorias para aceitar o novo grupo do DRE
   (dados e referências preservados; backup automático antes).

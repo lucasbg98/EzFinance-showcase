@@ -27,7 +27,7 @@ class StatementLine:
     label: str
     amount: Money
     line_type: LineType
-    group: DreGroup | None = None
+    group: DreGroup | str | None = None  # grupo do DRE ou UNCLASSIFIED; None em subtotais
 
 
 @dataclass(frozen=True, slots=True)
@@ -83,6 +83,8 @@ def build_income_statement(totals: Mapping[DreGroup | str, GroupTotals]) -> list
         line(DreGroup.OTHER_RESULTS),
     ]
     if not unclassified.is_zero:
-        lines.append(StatementLine("(±) Não classificados", unclassified, LineType.GROUP))
+        lines.append(
+            StatementLine("(±) Não classificados", unclassified, LineType.GROUP, UNCLASSIFIED)
+        )
     lines.append(StatementLine("(=) Resultado do período", result, LineType.RESULT))
     return lines

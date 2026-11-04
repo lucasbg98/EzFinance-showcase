@@ -104,6 +104,42 @@ class CategoryTotal:
 
 
 @dataclass(frozen=True, slots=True)
+class StatementCategoryTotal:
+    """Total de uma categoria dentro de um grupo do DRE (detalhamento ao clicar)."""
+
+    group: DreGroup | str  # grupo do DRE ou UNCLASSIFIED
+    category_id: str | None
+    group_name: str | None
+    category_name: str | None
+    inflow_cents: int
+    outflow_cents: int
+    count: int
+
+    @property
+    def net_cents(self) -> int:
+        return self.inflow_cents - self.outflow_cents
+
+
+@dataclass(frozen=True, slots=True)
+class StatementTransactionsFilter:
+    """Lançamentos de uma categoria no DRE, no período e regime da tela.
+
+    ``category_id=None`` = lançamentos sem categoria.
+    """
+
+    start: date
+    end: date
+    basis: ReportBasis
+    category_id: str | None
+    limit: int = MAX_PAGE
+
+    def __post_init__(self) -> None:
+        if self.end < self.start:
+            raise ValueError("Período inválido.")
+        object.__setattr__(self, "limit", min(max(self.limit, 1), MAX_PAGE))
+
+
+@dataclass(frozen=True, slots=True)
 class IncomeStatementTotals:
     totals: Mapping[DreGroup | str, GroupTotals] = field(default_factory=dict)
 
@@ -122,3 +158,9 @@ class ReportQueries(Protocol):
     def category_totals(
         self, start: date, end: date, basis: ReportBasis
     ) -> list[CategoryTotal]: ...
+    def income_statement_details(
+        self, start: date, end: date, basis: ReportBasis
+    ) -> list[StatementCategoryTotal]: ...
+    def statement_transactions(
+        self, criteria: StatementTransactionsFilter, today: date
+    ) -> list[TransactionRow]: ...

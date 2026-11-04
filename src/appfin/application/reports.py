@@ -13,6 +13,8 @@ from appfin.application.read_models import (
     MonthlyFlow,
     PeriodSummary,
     ReportQueries,
+    StatementCategoryTotal,
+    StatementTransactionsFilter,
     TransactionFilter,
     TransactionRow,
 )
@@ -59,3 +61,13 @@ class ReportService:
 
     def category_totals(self, start: date, end: date, basis: ReportBasis) -> list[CategoryTotal]:
         return self._queries().category_totals(start, end, basis)
+
+    def income_statement_details(
+        self, start: date, end: date, basis: ReportBasis
+    ) -> list[StatementCategoryTotal]:
+        """Categorias de cada grupo do DRE, para expandir as linhas na tela."""
+        return self._queries().income_statement_details(start, end, basis)
+
+    def statement_transactions(self, criteria: StatementTransactionsFilter) -> list[TransactionRow]:
+        """Lançamentos que formam o valor de uma categoria no DRE."""
+        return self._queries().statement_transactions(criteria, self._today())
